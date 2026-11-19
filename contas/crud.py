@@ -59,6 +59,12 @@ def estilizar_campos(form):
             field.input_formats = ['%Y-%m-%d', '%d/%m/%Y']
         elif isinstance(field, forms.TimeField):
             field.widget = w = forms.TimeInput(attrs={'type': 'time'}, format='%H:%M')
+        elif isinstance(field, (forms.DecimalField, forms.FloatField)) and not isinstance(w, forms.HiddenInput):
+            # aceita vírgula decimal (padrão brasileiro): "95,00" e exibe valores como "95,00"
+            field.localize = True
+            field.widget = w = forms.TextInput(attrs={'inputmode': 'decimal', **{k: v for k, v in w.attrs.items()
+                                                                                if k in ('placeholder',)}})
+            w.is_localized = True
         if isinstance(w, (forms.CheckboxInput,)):
             css = 'form-check-input'
         elif isinstance(w, forms.CheckboxSelectMultiple):

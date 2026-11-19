@@ -1,0 +1,12 @@
+{% load static clinica_tags %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>Acesso suspenso</title></head>
+<body class="bg-light"><main class="container py-5" style="max-width: 640px;">
+  <div class="card"><div class="card-body p-4">
+    <h1 class="h4 fw-bold"><i class="bi bi-lock text-danger"></i> Acesso temporariamente suspenso</h1>
+    {% if a %}<p>A assinatura da <b>{{ a.clinica }}</b> está <b>{{ a.get_status_display|lower }}</b>{% if a.status == 'teste' %} (período de teste encerrado em {{ a.teste_ate|date:"d/m/Y" }}){% endif %}.
+      Os dados estão preservados; o acesso volta assim que o pagamento for confirmado.</p>{% endif %}
+    <p class="small text-muted">Pacientes continuam podendo confirmar consultas e acessar o portal.</p>
+    {% for f in faturas %}<div class="border rounded p-3 mb-2"><b>Fatura {{ f.competencia }}</b> — {{ f.valor|moeda }}{% include "assinaturas/_pix.html" %}</div>{% endfor %}
+    <form method="post" action="{% url 'contas:logout' %}" class="mt-3">{% csrf_token %}<button class="btn btn-light border">Sair</button></form>
+  </div></div>
+</main>{% include "assinaturas/_qr.html" %}</body></html>

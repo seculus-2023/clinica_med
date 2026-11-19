@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Termo de consentimento{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-file-earmark-check"></i>Termo de consentimento</h1><p>{{ p.nome }} — o paciente lê e assina na tela (tablet, celular ou mouse).</p></div>
+  <a href="{% url 'prontuario:paciente' p.pk %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Prontuário</a></div>
+<form method="get" class="filtros mb-3"><select name="modelo" class="form-select" style="max-width: 360px;" aria-label="Modelo" onchange="this.form.submit()">
+  <option value="">Escolha um modelo...</option>{% for m in modelos %}<option value="{{ m.pk }}" {% if modelo.pk == m.pk %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}</select>
+  <input name="procedimento" class="form-control" style="max-width: 320px;" placeholder="Procedimento (opcional)" value="{{ request.GET.procedimento }}">
+  <button class="btn btn-light">Aplicar</button></form>
+<form method="post" novalidate id="formTermo">{% csrf_token %}
+  {% if form.non_field_errors or form.assinatura.errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }} {{ form.assinatura.errors|join:" " }}</div>{% endif %}
+  <div class="card mb-3"><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.titulo col="col-md-8" %}{% include "_campo.html" with f=form.procedimento col="col-md-4" %}
+    {% include "_campo.html" with f=form.texto col="col-12" %}
+  </div></div></div>
+  <div class="card mb-3"><div class="card-header">Assinatura</div><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.assinante_nome col="col-md-5" %}{% include "_campo.html" with f=form.assinante_documento col="col-md-3" %}{% include "_campo.html" with f=form.assinante_relacao col="col-md-4" %}
+    <div class="col-12">
+      <canvas id="pad" width="1000" height="260" style="width: 100%; height: 200px; border: 2px dashed #aac4d8; border-radius: 10px; background: #fff; touch-action: none; cursor: crosshair;"></canvas>
+      <div class="d-flex justify-content-between mt-1"><span class="small text-muted">Assine dentro do quadro com o dedo, caneta ou mouse.</span>
+        <button type="button" class="btn btn-sm btn-light border" id="limpar"><i class="bi bi-eraser"></i> Limpar</button></div>
+      {{ form.assinatura }}
+    </div>
+  </div></div></div>
+  <div class="text-end mb-4"><button class="btn btn-primary btn-lg"><i class="bi bi-pen"></i> Confirmar assinatura</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var pad = document.getElementById('pad'), ctx = pad.getContext('2d'), saida = document.getElementById('id_assinatura'), ativo = false, riscou = false;
+  ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b2a6b';
+  function pt(e) { var r = pad.getBoundingClientRect(); return [(e.clientX - r.left) * pad.width / r.width, (e.clientY - r.top) * pad.height / r.height]; }
+  pad.addEventListener('pointerdown', function (e) { ativo = true; pad.setPointerCapture(e.pointerId); var p = pt(e); ctx.beginPath(); ctx.moveTo(p[0], p[1]); });
+  pad.addEventListener('pointermove', function (e) { if (!ativo) return; var p = pt(e); ctx.lineTo(p[0], p[1]); ctx.stroke(); riscou = true; });
+  function fim() { ativo = false; }
+  pad.addEventListener('pointerup', fim); pad.addEventListener('pointercancel', fim);
+  document.getElementById('limpar').addEventListener('click', function () { ctx.clearRect(0, 0, pad.width, pad.height); riscou = false; saida.value = ''; });
+  document.getElementById('formTermo').addEventListener('submit', function (e) {
+    if (!riscou) { e.preventDefault(); alert('Peça para o paciente assinar no quadro.'); return; }
+    saida.value = pad.toDataURL('image/png');
+  });
+})();
+</script>
+{% endblock %}

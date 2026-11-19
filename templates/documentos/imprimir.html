@@ -29,6 +29,8 @@
 {% if doc.conteudo %}<pre>{{ doc.conteudo }}</pre>{% endif %}
 {% if doc.cid %}<p><b>CID:</b> {{ doc.cid }}</p>{% endif %}
 <p style="margin-top: 26px;">{{ c.cidade|default:"" }}{% if c.cidade %}, {% endif %}{{ doc.data|date:"d \d\e F \d\e Y" }}.</p>
-<div class="assin"><div class="linha"></div><b>{{ doc.medico.nome }}</b><br>{{ doc.medico.registro_completo }}</div>
-<div class="rodape muted">Documento nº {{ doc.pk }} · código de verificação {{ doc.codigo|stringformat:"s"|slice:":8"|upper }}</div>
+<div class="assin">{% if assinar %}<img src="{% url 'documentos:medico_assinatura' doc.medico.pk %}" alt="Assinatura" style="max-height: 70px; max-width: 260px; display: block; margin: 0 auto -6px;">{% endif %}
+  <div class="linha"></div><b>{{ doc.medico.nome }}</b><br>{{ doc.medico.registro_completo }}
+  {% if assinar %}<div class="muted" style="font-size: 10px; margin-top: 4px;">Assinado eletronicamente em {% now "d/m/Y H:i" %}</div>{% endif %}</div>
+<div class="rodape muted">Documento nº {{ doc.pk }} · Código de verificação <b>{{ doc.codigo_verificacao }}</b> · confira em {{ url_verificacao }}</div>
 </body></html>

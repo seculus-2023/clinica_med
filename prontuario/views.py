@@ -107,7 +107,7 @@ class AtendimentoForm(ClinicaModelForm):
 class AnexoForm(ClinicaModelForm):
     class Meta:
         model = Anexo
-        fields = ['tipo', 'titulo', 'data', 'arquivo', 'resultado', 'atendimento']
+        fields = ['tipo', 'titulo', 'data', 'arquivo', 'resultado', 'atendimento', 'visivel_paciente']
 
     def __init__(self, *args, paciente=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -174,7 +174,8 @@ def _contexto_prontuario(request, p):
             item['n'] += 1
     lab = comparativo_laboratorial(p)
     return {
-        'lab': lab, 'lab_series': json.dumps(lab['series']),
+        'lab': lab, 'lab_series': json.dumps(lab['series']), 'termos': p.termos.all()[:30],
+        'crescimento': _crescimento(p),
         'p': p, 'hist': hist, 'atendimentos': atendimentos, 'documentos': documentos, 'anexos': anexos,
         'agendamentos': agendamentos[:50], 'linha': linha, 'grafico': json.dumps(grafico), 'tem_vitais': bool(vitais),
         'ultimo_vital': vitais[-1] if vitais else None, 'cids': sorted(cids.values(), key=lambda x: -x['n']),
@@ -573,3 +574,11 @@ def comparativo_laboratorial(paciente):
                             'max': float(exame.ref_max) if exame.ref_max is not None else None,
                             'pontos': [[r.data.strftime('%d/%m/%y'), float(r.valor)] for r in ordenados]}
     return {'datas': datas, 'linhas': linhas, 'series': series}
+
+
+def _crescimento(p):
+    if p.idade is None or p.idade >= 19:
+        return None
+    from .especialidades import dados_crescimento
+    d = dados_crescimento(p)
+    return json.dumps(d) if d and d['tem_dados'] else None

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Lote {{ lote.numero }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-box-seam"></i>Lote {{ lote.numero }} — {{ lote.operadora }}</h1>
+    <p>Competência {{ lote.competencia }} · {{ lote.get_status_display }} · apresentado {{ lote.valor_total|moeda }}{% if lote.valor_pago %} · pago {{ lote.valor_pago|moeda }} · glosado {{ lote.valor_glosado|moeda }}{% endif %}{% if lote.protocolo %} · protocolo {{ lote.protocolo }}{% endif %}</p></div>
+  <a href="{% url 'convenios:lotes' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i> Lotes</a>
+</div>
+{% if erros %}<div class="alert alert-warning small"><b><i class="bi bi-exclamation-triangle"></i> Pendências que podem causar rejeição pela operadora:</b><ul class="mb-0">{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if pode_editar %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <form method="post" action="{% url 'convenios:lote_acao' lote.pk %}">{% csrf_token %}<button name="acao" value="xml" class="btn btn-primary"><i class="bi bi-filetype-xml"></i> Gerar / baixar XML TISS</button></form>
+  {% if lote.status == 'aberto' %}
+  <form method="post" action="{% url 'convenios:lote_acao' lote.pk %}" class="d-flex gap-2" data-confirm="Marcar o lote como enviado à operadora? As guias não poderão mais ser removidas.">{% csrf_token %}
+    <input name="protocolo" class="form-control" placeholder="Protocolo (opcional)" style="max-width: 200px;"><button name="acao" value="enviar" class="btn btn-success"><i class="bi bi-send"></i> Marcar como enviado</button></form>
+  {% endif %}
+</div>
+{% endif %}
+<div class="small text-muted mb-2">{% if lote.hash_xml %}Último XML gerado: hash {{ lote.hash_xml }}. {% endif %}Valide o arquivo no portal da operadora antes do primeiro envio.</div>
+
+<form method="post" action="{% url 'convenios:lote_acao' lote.pk %}">{% csrf_token %}
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Guia</th><th>Data</th><th>Paciente</th><th>Procedimento</th><th class="num">Valor</th>
+    {% if lote.status != 'aberto' %}<th style="width: 120px;">Valor pago</th><th style="width: 220px;">Glosa</th>{% endif %}<th>Status</th><th></th></tr></thead>
+  <tbody>{% for g in guias %}<tr><td>{{ g.numero_guia }}</td><td>{{ g.data_atendimento|date:"d/m/Y" }}</td><td>{{ g.paciente }}</td>
+    <td class="small">{{ g.codigo_procedimento }} {{ g.descricao_procedimento|truncatechars:28 }}</td><td class="num">{{ g.valor_total|moeda }}</td>
+    {% if lote.status != 'aberto' %}
+      <td><input name="pago_{{ g.pk }}" class="form-control form-control-sm" value="{% if g.valor_pago is not None %}{{ g.valor_pago }}{% endif %}" placeholder="{{ g.valor_total }}" inputmode="decimal"></td>
+      <td><select name="glosa_{{ g.pk }}" class="form-select form-select-sm mb-1" aria-label="Código da glosa">{% for v, r in motivos %}<option value="{{ v }}" {% if g.glosa_codigo == v %}selected{% endif %}>{{ r|truncatechars:40 }}</option>{% endfor %}</select>
+        <input name="motivo_{{ g.pk }}" class="form-control form-control-sm" value="{{ g.glosa_motivo }}" placeholder="Observação da glosa"></td>
+    {% endif %}
+    <td><span class="badge text-bg-light border">{{ g.get_status_display }}</span></td>
+    <td class="text-end text-nowrap"><a href="{% url 'convenios:guia_editar' g.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>
+      {% if lote.status == 'aberto' and pode_editar %}<button form="rem{{ g.pk }}" class="btn btn-sm btn-light text-danger" title="Tirar do lote"><i class="bi bi-x-lg"></i></button>{% endif %}</td></tr>
+  {% endfor %}</tbody></table></div>
+  {% if lote.status != 'aberto' and pode_editar %}<div class="card-footer bg-transparent text-end">
+    <span class="small text-muted me-2">Deixe o valor pago vazio para considerar o valor integral.</span>
+    <button name="acao" value="pagamento" class="btn btn-success"><i class="bi bi-cash-coin"></i> Registrar pagamento / glosas</button></div>{% endif %}
+</div>
+</form>
+{% for g in guias %}<form id="rem{{ g.pk }}" method="post" action="{% url 'convenios:lote_acao' lote.pk %}">{% csrf_token %}<input type="hidden" name="acao" value="remover_guia"><input type="hidden" name="guia" value="{{ g.pk }}"></form>{% endfor %}
+{% endblock %}

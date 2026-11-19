@@ -23,8 +23,18 @@ self.addEventListener('activate', (event) => {
 });
 
 function ehEstatico(url) {
-  return url.pathname.startsWith('/static/') || /cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(url.host);
+  return url.pathname.startsWith('/static/') || /cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|fonts\.(googleapis|gstatic)\.com/.test(url.host);
 }
+
+// Clique na notificação: foca uma janela aberta do sistema ou abre a página indicada
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
+    for (const c of lista) { if ('focus' in c) { c.navigate(url); return c.focus(); } }
+    return clients.openWindow(url);
+  }));
+});
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;

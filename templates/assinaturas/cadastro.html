@@ -1,0 +1,26 @@
+{% load static clinica_tags %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>Cadastre sua clínica | {{ nome_sistema }}</title>
+<style>.pub { min-height: 100vh; background: linear-gradient(180deg, #0b1f24 0, #12303a 260px, #f2f6f7 260px); padding: 1.5rem 1rem 3rem; } .pub .box { max-width: 880px; margin: 0 auto; }
+.plano-op label { border: 1px solid var(--ma-border); border-radius: 12px; padding: .8rem 1rem; display: block; cursor: pointer; } .plano-op input:checked + span { color: var(--ma-primary); font-weight: 700; }</style></head>
+<body><main class="pub"><div class="box">
+  <div class="text-white mb-3 d-flex align-items-center gap-2"><img src="{% static 'icons/icon-192.png' %}" alt="" style="width: 46px; border-radius: 12px;">
+    <div><div class="fw-bold fs-4">{{ nome_sistema }}</div><div class="opacity-75">Agenda, prontuário, financeiro, convênios TISS, WhatsApp — tudo numa plataforma.</div></div></div>
+  <div class="card"><div class="card-body p-4">
+    <h1 class="h4 fw-bold">Cadastre sua clínica — teste grátis</h1>
+    <form method="post" novalidate>{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+      <h2 class="h6 text-muted text-uppercase mt-3">Clínica</h2>
+      <div class="row g-3">{% include "_campo.html" with f=form.clinica col="col-md-6" %}{% include "_campo.html" with f=form.cnpj col="col-md-6" %}
+        {% include "_campo.html" with f=form.cidade col="col-md-5" %}{% include "_campo.html" with f=form.uf col="col-md-2" %}{% include "_campo.html" with f=form.whatsapp col="col-md-5" %}</div>
+      <h2 class="h6 text-muted text-uppercase mt-4">Responsável (administrador)</h2>
+      <div class="row g-3">{% include "_campo.html" with f=form.nome col="col-md-6" %}{% include "_campo.html" with f=form.email col="col-md-6" %}
+        {% include "_campo.html" with f=form.usuario col="col-md-6" %}{% include "_campo.html" with f=form.senha col="col-md-6" %}</div>
+      <h2 class="h6 text-muted text-uppercase mt-4">Plano</h2>
+      <div class="row g-2 plano-op">{% for op in form.plano %}<div class="col-md-4"><label>{{ op.tag }} <span>{{ op.choice_label }}</span></label></div>{% endfor %}</div>
+      {% if form.plano.errors %}<ul class="errorlist">{% for e in form.plano.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      <div class="mt-3">{% include "_campo.html" with f=form.aceite col="" %}</div>{{ form.site }}
+      <button class="btn btn-primary btn-lg w-100 mt-3"><i class="bi bi-rocket-takeoff"></i> Criar minha clínica</button>
+    </form>
+    <p class="small text-muted mt-3 mb-0">Já tem conta? <a href="{% url 'contas:login' %}">Entrar</a></p>
+  </div></div>
+</div></main></body></html>

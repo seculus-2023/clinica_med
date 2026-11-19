@@ -16,8 +16,8 @@ class AgendamentoForm(ClinicaModelForm):
 
     class Meta:
         model = Agendamento
-        fields = ['paciente', 'medico', 'tipo', 'inicio', 'pacote', 'convenio', 'teleconsulta', 'valor', 'status',
-                  'observacoes', 'notificar']
+        fields = ['paciente', 'medico', 'tipo', 'inicio', 'recurso', 'pacote', 'operadora', 'plano', 'autorizacao_status',
+                  'autorizacao_senha', 'convenio', 'teleconsulta', 'valor', 'status', 'observacoes', 'notificar']
 
     def __init__(self, *args, medico_restrito=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,6 +25,8 @@ class AgendamentoForm(ClinicaModelForm):
             clinica=self.clinica, status='ativo').select_related('paciente', 'tipo')
         self.fields['pacote'].required = False
         self.fields['valor'].help_text = 'Vazio = valor da tabela de preços (zero se for sessão de pacote).'
+        self.fields['autorizacao_status'].required = False
+        self.fields['autorizacao_status'].initial = 'nao_requer'
         if medico_restrito:
             self.fields['medico'].queryset = self.fields['medico'].queryset.filter(pk=medico_restrito.pk)
             self.fields['medico'].initial = medico_restrito.pk
@@ -53,6 +55,21 @@ class AgendamentoForm(ClinicaModelForm):
                                              f'disponível(is) para agendar.')
         if not tipo:
             return d
+        op, plano = d.get('operadora'), d.get('plano')
+        if d.get('convenio') and not op and paciente.operadora_id:
+            d['operadora'] = op = paciente.operadora
+            d['plano'] = plano = plano or paciente.plano
+        if op:
+            if plano and plano.operadora_id != op.pk:
+                self.add_error('plano', 'Este plano é de outra operadora.')
+            if paciente.validade_carteirinha and paciente.validade_carteirinha < inicio.date():
+                self.add_error('operadora', f'Carteirinha do paciente vencida em {paciente.validade_carteirinha:%d/%m/%Y}. '
+                                            'Atualize o cadastro ou agende como particular.')
+            from convenios.services import requer_autorizacao
+            if requer_autorizacao(op, plano, tipo) and d.get('autorizacao_status') in (None, '', 'nao_requer'):
+                d['autorizacao_status'] = 'pendente'
+            if d.get('autorizacao_status') == 'negada' and d.get('status') not in ('cancelado',):
+                self.add_error('autorizacao_status', 'Autorização negada pela operadora: agende como particular ou cancele.')
         fim = inicio + timedelta(minutes=tipo.duracao_minutos or 30)
         d['fim'] = fim
         status = d.get('status') or 'agendado'
@@ -63,6 +80,12 @@ class AgendamentoForm(ClinicaModelForm):
                 conflitos = conflitos.exclude(pk=self.instance.pk)
             c = conflitos.filter(medico=medico).select_related('paciente').first()
             bloqueio = BloqueioAgenda.conflitante(self.clinica, medico, inicio, fim)
+            recurso = d.get('recurso') or tipo.recurso
+            d['recurso'] = recurso
+            uso = conflitos.filter(recurso=recurso).select_related('medico').first() if recurso else None
+            if uso:
+                self.add_error('recurso', f'{recurso} já está reservado(a) para {uso.medico} às '
+                                          f'{timezone.localtime(uso.inicio):%H:%M}.')
             if bloqueio:
                 self.add_error('inicio', f'Horário bloqueado: {bloqueio}.')
             elif c:
@@ -75,10 +98,13 @@ class AgendamentoForm(ClinicaModelForm):
     def save(self, commit=True):
         obj = super().save(commit=False)
         obj.tipo = self.cleaned_data['tipo']
+        obj.operadora, obj.plano = self.cleaned_data.get('operadora'), self.cleaned_data.get('plano')
+        obj.recurso = self.cleaned_data.get('recurso')
+        obj.autorizacao_status = self.cleaned_data.get('autorizacao_status') or 'nao_requer'
         obj.fim = self.cleaned_data['fim']
         if 'valor' in self.changed_data or not obj.pk:
             obj.valor = self.cleaned_data.get('valor')
-        elif {'tipo', 'convenio', 'pacote'} & set(self.changed_data):
+        elif {'tipo', 'convenio', 'pacote', 'operadora', 'plano'} & set(self.changed_data):
             obj.valor = None  # recalcula pela tabela de preços
         if commit:
             obj.save()
@@ -135,3 +161,11 @@ class ListaEsperaForm(ClinicaModelForm):
     class Meta:
         model = ListaEspera
         exclude = []
+
+
+class RecursoForm(ClinicaModelForm):
+    class Meta:
+        from .models import Recurso
+        model = Recurso
+        exclude = []
+        widgets = {'cor': forms.TextInput(attrs={'type': 'color'})}

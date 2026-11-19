@@ -1,0 +1,22 @@
+{% extends "agenda/publico/_base.html" %}
+{% block titulo %}Portal do paciente{% endblock %}
+{% block conteudo %}
+<div class="card mx-auto" style="max-width: 480px;"><div class="card-body p-4">
+  <h1 class="h4 fw-bold mb-1"><i class="bi bi-person-lock text-primary"></i> Portal do paciente</h1>
+  <p class="text-muted small">Consulte seus agendamentos, receitas, atestados, exames e recibos.</p>
+  {% for m in messages %}<div class="alert alert-{{ m.tags }} py-2 small">{{ m }}</div>{% endfor %}
+  {% if aguardando %}
+    <div class="alert alert-info small py-2">Se os dados estiverem corretos, enviamos um código de 6 dígitos para {{ destino }}.</div>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="etapa" value="codigo">
+      {% include "_campo.html" with f=form_codigo.codigo col="mb-3" %}
+      <button class="btn btn-primary btn-lg w-100"><i class="bi bi-box-arrow-in-right"></i> Entrar</button></form>
+    <div class="text-center mt-3"><a href="?reiniciar=1" class="small">Não recebi / usar outros dados</a></div>
+  {% else %}
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="etapa" value="dados">
+      {% include "_campo.html" with f=form.cpf col="mb-3" %}{% include "_campo.html" with f=form.nascimento col="mb-3" %}
+      <button class="btn btn-primary btn-lg w-100"><i class="bi bi-send"></i> Receber código de acesso</button></form>
+    <p class="small text-muted mt-3 mb-0">O código é enviado para o WhatsApp e o e-mail informados no seu cadastro na clínica. Seus dados são protegidos (LGPD).</p>
+  {% endif %}
+</div></div>
+<div class="text-center mt-3"><a href="{% url 'agenda:online' c.codigo_publico %}" class="small"><i class="bi bi-calendar-plus"></i> Marcar uma consulta</a></div>
+{% endblock %}

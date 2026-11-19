@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}DRE{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-clipboard-data"></i>DRE — demonstração do resultado</h1><p>Receitas menos despesas por categoria e mês.</p></div>
+  <form class="filtros no-print">
+    <input type="date" name="de" value="{{ de|date:'Y-m-d' }}" class="form-control" aria-label="De"><input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}" class="form-control" aria-label="Até">
+    <select name="regime" class="form-select" aria-label="Regime"><option value="caixa" {% if regime == 'caixa' %}selected{% endif %}>Regime de caixa (pago)</option><option value="competencia" {% if regime == 'competencia' %}selected{% endif %}>Competência (vencimento)</option></select>
+    <button class="btn btn-light">Aplicar</button>
+    <a href="?de={{ de|date:'Y-m-d' }}&ate={{ ate|date:'Y-m-d' }}&regime={{ regime }}&formato=xlsx" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+    <button type="button" class="btn btn-outline-danger" onclick="print()"><i class="bi bi-file-earmark-pdf"></i> PDF</button></form></div>
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-arrow-down-circle"></i></div><div><div class="v">{{ d.rec_t|moeda }}</div><div class="l">Receitas</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-red"><i class="bi bi-arrow-up-circle"></i></div><div><div class="v">{{ d.desp_t|moeda }}</div><div class="l">Despesas</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-calculator"></i></div><div><div class="v {% if d.resultado_t < 0 %}text-danger{% endif %}">{{ d.resultado_t|moeda }}</div><div class="l">Resultado</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-percent"></i></div><div><div class="v">{% if d.margem is not None %}{{ d.margem|floatformat:1 }}%{% else %}-{% endif %}</div><div class="l">Margem</div></div></div></div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+  <thead><tr><th>Conta</th>{% for m in d.meses %}<th class="num">{{ m|date:"m/Y" }}</th>{% endfor %}<th class="num">Total</th></tr></thead>
+  <tbody>
+    <tr class="table-success"><th colspan="{{ d.meses|length|add:2 }}">RECEITAS</th></tr>
+    {% for cat, vals, tot in d.receitas %}<tr><td class="ps-3">{{ cat }}</td>{% for v in vals %}<td class="num">{{ v|moeda }}</td>{% endfor %}<td class="num fw-semibold">{{ tot|moeda }}</td></tr>{% endfor %}
+    <tr class="fw-bold"><td>Total de receitas</td>{% for v in d.rec_m %}<td class="num">{{ v|moeda }}</td>{% endfor %}<td class="num">{{ d.rec_t|moeda }}</td></tr>
+    <tr class="table-danger"><th colspan="{{ d.meses|length|add:2 }}">DESPESAS</th></tr>
+    {% for cat, vals, tot in d.despesas %}<tr><td class="ps-3">{{ cat }}</td>{% for v in vals %}<td class="num">{{ v|moeda }}</td>{% endfor %}<td class="num fw-semibold">{{ tot|moeda }}</td></tr>{% endfor %}
+    <tr class="fw-bold"><td>Total de despesas</td>{% for v in d.desp_m %}<td class="num">{{ v|moeda }}</td>{% endfor %}<td class="num">{{ d.desp_t|moeda }}</td></tr>
+    <tr class="fw-bold fs-6 table-light"><td>RESULTADO</td>{% for v in d.resultado %}<td class="num {% if v < 0 %}text-danger{% endif %}">{{ v|moeda }}</td>{% endfor %}<td class="num {% if d.resultado_t < 0 %}text-danger{% endif %}">{{ d.resultado_t|moeda }}</td></tr>
+  </tbody></table></div></div>
+{% endblock %}

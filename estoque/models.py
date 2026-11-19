@@ -83,7 +83,11 @@ class MovimentoEstoque(ClinicaModel):
     data = models.DateField(default=timezone.localdate)
     lote = models.CharField(max_length=50, blank=True)
     validade = models.DateField(null=True, blank=True)
-    fornecedor = models.CharField(max_length=150, blank=True)
+    fornecedor = models.CharField('Fornecedor (texto)', max_length=150, blank=True)
+    fornecedor_cad = models.ForeignKey('Fornecedor', on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name='movimentos', verbose_name='Fornecedor')
+    lancamento = models.ForeignKey('financeiro.Lancamento', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+', editable=False)
     nota_fiscal = models.CharField('Nota fiscal', max_length=50, blank=True)
     paciente = models.ForeignKey(Paciente, on_delete=models.SET_NULL, null=True, blank=True,
                                  help_text='Opcional: paciente que consumiu o item.')
@@ -120,3 +124,89 @@ class MovimentoEstoque(ClinicaModel):
         r = super().delete(*args, **kwargs)
         produto.recalcular()
         return r
+
+
+class Fornecedor(ClinicaModel):
+    nome = models.CharField(max_length=150)
+    cnpj = models.CharField('CNPJ / CPF', max_length=20, blank=True)
+    contato = models.CharField(max_length=100, blank=True)
+    telefone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField('E-mail', blank=True)
+    prazo_pagamento_dias = models.PositiveIntegerField('Prazo de pagamento (dias)', default=30)
+    observacoes = models.TextField('Observações', blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Fornecedor'
+
+    def __str__(self):
+        return self.nome
+
+
+class PedidoCompra(ClinicaModel):
+    STATUS = [('rascunho', 'Rascunho'), ('enviado', 'Enviado ao fornecedor'), ('recebido', 'Recebido'),
+              ('cancelado', 'Cancelado')]
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.PROTECT, related_name='pedidos')
+    data = models.DateField(default=timezone.localdate)
+    previsao_entrega = models.DateField('Previsão de entrega', null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default='rascunho', editable=False)
+    nota_fiscal = models.CharField('Nota fiscal', max_length=50, blank=True)
+    observacoes = models.TextField('Observações', blank=True)
+    recebido_em = models.DateField(null=True, blank=True, editable=False)
+    lancamento = models.ForeignKey('financeiro.Lancamento', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+', editable=False)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='+', editable=False)
+
+    class Meta:
+        ordering = ['-data', '-id']
+        verbose_name = 'Pedido de compra'
+
+    def __str__(self):
+        return f'Pedido {self.pk} - {self.fornecedor}'
+
+    @property
+    def total(self):
+        return sum((i.total for i in self.itens.all()), Decimal('0'))
+
+
+class ItemPedido(models.Model):
+    pedido = models.ForeignKey(PedidoCompra, on_delete=models.CASCADE, related_name='itens')
+    produto = models.ForeignKey(Produto, on_delete=models.PROTECT)
+    quantidade = models.DecimalField(max_digits=12, decimal_places=2, default=1)
+    custo_unitario = models.DecimalField('Custo unitário (R$)', max_digits=12, decimal_places=2, default=0)
+    lote = models.CharField(max_length=50, blank=True)
+    validade = models.DateField(null=True, blank=True)
+
+    @property
+    def total(self):
+        return (self.quantidade or 0) * (self.custo_unitario or 0)
+
+
+class Inventario(ClinicaModel):
+    """Contagem física do estoque; ao concluir, gera os ajustes (+/-) das diferenças."""
+    STATUS = [('aberto', 'Em contagem'), ('concluido', 'Concluído')]
+    data = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=10, choices=STATUS, default='aberto', editable=False)
+    observacoes = models.TextField('Observações', blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+',
+                                editable=False)
+
+    class Meta:
+        ordering = ['-data', '-id']
+        verbose_name = 'Inventário'
+
+    def __str__(self):
+        return f'Inventário {self.data:%d/%m/%Y}'
+
+
+class ItemInventario(models.Model):
+    inventario = models.ForeignKey(Inventario, on_delete=models.CASCADE, related_name='itens')
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE)
+    saldo_sistema = models.DecimalField(max_digits=12, decimal_places=2)
+    contado = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    @property
+    def diferenca(self):
+        return None if self.contado is None else self.contado - self.saldo_sistema

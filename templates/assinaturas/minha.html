@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Minha assinatura{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-credit-card"></i>Minha assinatura</h1><p>Plano, faturas e pagamento do sistema.</p></div></div>
+{% if not a %}<div class="alert alert-light border">Esta clínica não possui assinatura vinculada (uso interno/licença própria).</div>
+{% else %}
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-box"></i></div><div><div class="v">{{ a.plano.nome }}</div><div class="l">{{ a.plano.preco_mensal|moeda }}/mês</div></div></div></div>
+  <div class="col-md-4"><div class="card kpi"><div class="ic {% if a.status == 'ativa' %}ic-green{% elif a.status == 'teste' %}ic-blue{% else %}ic-red{% endif %}"><i class="bi bi-shield-check"></i></div><div><div class="v">{{ a.get_status_display }}</div>
+    <div class="l">{% if a.status == 'teste' %}até {{ a.teste_ate|date:"d/m/Y" }}{% else %}vencimento todo dia {{ a.dia_vencimento }}{% endif %}</div></div></div></div>
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-violet"><i class="bi bi-people"></i></div><div><div class="v">{{ a.plano.max_usuarios|default:"∞" }} / {{ a.plano.max_medicos|default:"∞" }}</div><div class="l">Usuários / profissionais permitidos</div></div></div></div>
+</div>
+<div class="card mb-3"><div class="card-header">Faturas</div><ul class="list-group list-group-flush">
+  {% for f in faturas %}<li class="list-group-item">
+    <div class="d-flex justify-content-between flex-wrap gap-2"><span><b>{{ f.competencia }}</b> · vence {{ f.vencimento|date:"d/m/Y" }}</span>
+      <span>{{ f.valor|moeda }} <span class="badge {% if f.status == 'paga' %}text-bg-success{% elif f.atrasada %}text-bg-danger{% else %}text-bg-warning{% endif %}">{% if f.atrasada %}Atrasada{% else %}{{ f.get_status_display }}{% endif %}</span></span></div>
+    {% include "assinaturas/_pix.html" %}</li>
+  {% empty %}<li class="list-group-item small text-muted">Nenhuma fatura ainda.</li>{% endfor %}</ul></div>
+<div class="card"><div class="card-header">Planos disponíveis</div><div class="card-body row g-2">{% for pl in planos %}
+  <div class="col-md-4"><div class="border rounded p-3 h-100 {% if pl.pk == a.plano_id %}border-primary{% endif %}"><b>{{ pl.nome }}</b> — {{ pl.preco_mensal|moeda }}/mês
+    <div class="small text-muted">{{ pl.max_usuarios|default:"ilimitados" }} usuários · {{ pl.max_medicos|default:"ilimitados" }} profissionais</div><div class="small">{{ pl.descricao|linebreaksbr }}</div></div></div>{% endfor %}
+  <div class="col-12 small text-muted">Para mudar de plano, fale com o suporte.</div></div></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% include "assinaturas/_qr.html" %}{% endblock %}

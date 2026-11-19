@@ -13,7 +13,7 @@ from cadastros.models import Medico
 from contas.crud import Crud, moeda
 from contas.permissoes import acesso, medico_restrito, tem_permissao
 
-from .forms import AgendamentoForm, BloqueioForm, ListaEsperaForm, PacoteForm
+from .forms import AgendamentoForm, BloqueioForm, ListaEsperaForm, PacoteForm, RecursoForm
 from .models import Agendamento, BloqueioAgenda, ListaEspera, PacoteSessao
 from .services import mudar_status
 
@@ -32,8 +32,10 @@ def calendario(request):
     med = medico_restrito(request)
     if med:
         medicos = medicos.filter(pk=med.pk)
+    from .models import Recurso
     return render(request, 'agenda/calendario.html', {
         'medicos': medicos, 'status': Agendamento.STATUS, 'cores': Agendamento.CORES,
+        'recursos': Recurso.objects.filter(clinica=request.clinica, ativo=True),
         'medico_sel': request.GET.get('medico', '')})
 
 
@@ -69,6 +71,8 @@ def eventos(request):
     qs = _agendamentos(request).filter(inicio__lt=fim, fim__gt=ini)
     if request.GET.get('medico'):
         qs = qs.filter(medico_id=request.GET['medico'])
+    if request.GET.get('recurso'):
+        qs = qs.filter(recurso_id=request.GET['recurso'])
     if request.GET.get('ocultar_cancelados') == '1':
         qs = qs.exclude(status='cancelado')
     dados = []
@@ -79,7 +83,8 @@ def eventos(request):
             'start': a.inicio.isoformat(), 'end': a.fim.isoformat(),
             'backgroundColor': a.cor, 'borderColor': a.medico.cor,
             'url': reverse('agenda:detalhe', args=[a.pk]),
-            'extendedProps': {'status': a.get_status_display(), 'medico': a.medico.nome},
+            'extendedProps': {'status': a.get_status_display(), 'medico': a.medico.nome,
+                              'recurso': a.recurso.nome if a.recurso_id else ''},
         })
     return JsonResponse(dados, safe=False)
 
@@ -345,3 +350,13 @@ def espera_agendar(request, pk):
     if e.tipo_id:
         url += f'&tipo={e.tipo_id}'
     return redirect(url)
+
+
+class RecursoCrud(Crud):
+    from .models import Recurso as _R
+    model, form_class = _R, RecursoForm
+    modulo = 'agenda'
+    nome, nome_plural, url, icone = 'Sala / equipamento', 'Salas e equipamentos', 'agenda:recurso', 'bi-door-open'
+    descricao = 'Recursos reservados junto com o atendimento. Vincule ao tipo de atendimento para reservar automaticamente.'
+    colunas = [('nome', 'Nome'), ('tipo', 'Tipo'), ('descricao', 'Descrição'), ('ativo', 'Ativo')]
+    busca = ['nome']

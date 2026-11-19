@@ -115,6 +115,7 @@ a.kpi-link:hover .card { border-color: var(--ma-primary-2); }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .filtros { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
 .filtros > * { min-width: 0; }
+.page-head .filtros .form-control, .page-head .filtros .form-select { width: auto; max-width: 100%; }
 .vazio { text-align: center; padding: 2.5rem 1rem; color: var(--ma-muted); }
 .vazio i { font-size: 2rem; display: block; margin-bottom: .4rem; opacity: .6; }
 .progress { height: .55rem; border-radius: 10px; }

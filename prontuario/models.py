@@ -2,15 +2,15 @@
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.utils import timezone
 
 from cadastros.models import Cid, Medico, Paciente
+from clinica.armazenamento import privado
 from contas.models import Clinica, ClinicaModel
 
 # Arquivos do prontuário ficam fora de /media (não são públicos); o download passa por verificação de permissão.
-armazenamento_privado = FileSystemStorage(location=settings.BASE_DIR / 'privado')
+armazenamento_privado = privado
 
 SIM_NAO_EX = [('', '-'), ('nunca', 'Nunca'), ('ex', 'Ex-usuário'), ('ocasional', 'Ocasional'), ('atual', 'Atual')]
 
@@ -209,7 +209,8 @@ class Adendo(models.Model):
 class Anexo(ClinicaModel):
     TIPOS = [('laboratorio', 'Exame laboratorial'), ('imagem', 'Exame de imagem'), ('laudo', 'Laudo externo'),
              ('foto', 'Foto clínica'), ('termo', 'Termo de consentimento'), ('receita', 'Receita externa'),
-             ('video', 'Gravação de teleconsulta'), ('outro', 'Outro')]
+             ('video', 'Gravação de teleconsulta'), ('assinado', 'Documento assinado eletronicamente'),
+             ('outro', 'Outro')]
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='anexos')
     atendimento = models.ForeignKey(Atendimento, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='anexos')
@@ -218,6 +219,7 @@ class Anexo(ClinicaModel):
     data = models.DateField('Data do exame/documento', default=timezone.localdate)
     arquivo = models.FileField(upload_to='prontuario/%Y/%m/', storage=armazenamento_privado, blank=True)
     resultado = models.TextField('Resultado / descrição', blank=True)
+    visivel_paciente = models.BooleanField('Liberar no portal do paciente', default=False)
     enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='+', editable=False)
 
@@ -314,3 +316,80 @@ class AcessoProntuario(models.Model):
 
     class Meta:
         ordering = ['-data']
+
+
+class ModeloTermo(ClinicaModel):
+    """Modelo de termo de consentimento. Variáveis: {paciente} {cpf} {data} {medico} {registro} {clinica} {procedimento}."""
+    nome = models.CharField(max_length=150)
+    texto = models.TextField()
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Modelo de termo de consentimento'
+        verbose_name_plural = 'Modelos de termos de consentimento'
+
+    def __str__(self):
+        return self.nome
+
+
+class TermoAssinado(ClinicaModel):
+    """Termo assinado pelo paciente (ou responsável) na tela do tablet/celular/computador."""
+    paciente = models.ForeignKey(Paciente, on_delete=models.PROTECT, related_name='termos')
+    medico = models.ForeignKey(Medico, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Profissional')
+    atendimento = models.ForeignKey(Atendimento, on_delete=models.SET_NULL, null=True, blank=True, related_name='termos')
+    titulo = models.CharField(max_length=150)
+    texto = models.TextField()
+    assinante_nome = models.CharField('Assinado por', max_length=150)
+    assinante_documento = models.CharField('CPF/RG de quem assina', max_length=30, blank=True)
+    assinante_relacao = models.CharField('Relação com o paciente', max_length=40, default='Próprio paciente')
+    assinatura = models.ImageField(upload_to='termos/%Y/%m/', storage=privado)
+    assinado_em = models.DateTimeField(default=timezone.now)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    codigo_verificacao = models.CharField(max_length=19, unique=True)
+    sha256 = models.CharField(max_length=64)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+
+    class Meta:
+        ordering = ['-assinado_em']
+        verbose_name = 'Termo assinado'
+
+    def __str__(self):
+        return f'{self.titulo} - {self.paciente}'
+
+
+class ReferenciaCrescimento(models.Model):
+    """Curvas de referência (OMS) importadas: percentis por sexo, indicador e idade em meses. Compartilhada."""
+    INDICADORES = [('peso', 'Peso por idade (kg)'), ('altura', 'Comprimento/estatura por idade (cm)'),
+                   ('imc', 'IMC por idade (kg/m²)'), ('pc', 'Perímetro cefálico por idade (cm)')]
+    sexo = models.CharField(max_length=1, choices=[('M', 'Masculino'), ('F', 'Feminino')])
+    indicador = models.CharField(max_length=6, choices=INDICADORES)
+    idade_meses = models.PositiveIntegerField()
+    p3 = models.DecimalField(max_digits=7, decimal_places=3)
+    p15 = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True)
+    p50 = models.DecimalField(max_digits=7, decimal_places=3)
+    p85 = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True)
+    p97 = models.DecimalField(max_digits=7, decimal_places=3)
+
+    class Meta:
+        ordering = ['sexo', 'indicador', 'idade_meses']
+        unique_together = ('sexo', 'indicador', 'idade_meses')
+
+
+class Odontograma(ClinicaModel):
+    """Situação atual de cada dente (numeração FDI) e faces: {"16": {"s": "carie", "f": {"O": "carie"}}}."""
+    paciente = models.OneToOneField(Paciente, on_delete=models.CASCADE, related_name='odontograma')
+    dados = models.JSONField(default=dict, blank=True)
+    observacoes = models.TextField('Observações', blank=True)
+    atualizado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+
+
+class OdontogramaHistorico(models.Model):
+    odontograma = models.ForeignKey(Odontograma, on_delete=models.CASCADE, related_name='historico')
+    dente = models.CharField(max_length=3)
+    descricao = models.CharField(max_length=200)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-criado_em']

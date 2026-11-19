@@ -9,6 +9,8 @@
       <option value="">Todos os profissionais</option>
       {% for m in medicos %}<option value="{{ m.pk }}" {% if medico_sel == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}
     </select>
+    {% if recursos %}<select id="fRecurso" class="form-select" style="width: auto; min-width: 180px;" aria-label="Sala / equipamento">
+      <option value="">Todas as salas/equip.</option>{% for r in recursos %}<option value="{{ r.pk }}">{{ r.nome }}</option>{% endfor %}</select>{% endif %}
     <div class="form-check form-switch align-self-center"><input class="form-check-input" type="checkbox" id="fCanc" checked><label class="form-check-label small" for="fCanc">Ocultar cancelados</label></div>
     {% if perm|edita:'agenda' %}<a href="{% url 'agenda:novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Agendar</a>{% endif %}
   </div>
@@ -33,10 +35,11 @@ document.addEventListener('DOMContentLoaded', function () {
     slotMinTime: '06:00:00', slotMaxTime: '22:00:00', slotDuration: '00:15:00', allDaySlot: false, nowIndicator: true,
     height: 'auto', expandRows: true, businessHours: { daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: '07:00', endTime: '19:00' },
     events: function (info, ok, erro) {
-      var p = new URLSearchParams({ start: info.startStr, end: info.endStr, medico: fMed.value, ocultar_cancelados: fCanc.checked ? '1' : '0' });
+      var fRec = document.getElementById('fRecurso');
+      var p = new URLSearchParams({ start: info.startStr, end: info.endStr, medico: fMed.value, recurso: fRec ? fRec.value : '', ocultar_cancelados: fCanc.checked ? '1' : '0' });
       fetch('{% url "agenda:eventos" %}?' + p, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(ok).catch(erro);
     },
-    eventDidMount: function (i) { i.el.title = i.event.title + ' - ' + i.event.extendedProps.medico + ' (' + i.event.extendedProps.status + ')'; },
+    eventDidMount: function (i) { var x = i.event.extendedProps; i.el.title = i.event.title + ' - ' + x.medico + (x.recurso ? ' · ' + x.recurso : '') + ' (' + x.status + ')'; },
     dateClick: function (i) {
       if (!podeEditar || i.allDay) return;
       var u = '{% url "agenda:novo" %}?inicio=' + encodeURIComponent(i.dateStr.slice(0, 16));
@@ -47,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
   cal.render();
   fMed.addEventListener('change', function () { cal.refetchEvents(); });
   fCanc.addEventListener('change', function () { cal.refetchEvents(); });
+  var fRec2 = document.getElementById('fRecurso'); if (fRec2) fRec2.addEventListener('change', function () { cal.refetchEvents(); });
 });
 </script>
 {% endblock %}

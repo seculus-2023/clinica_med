@@ -31,9 +31,9 @@ class ClinicaForm(forms.ModelForm):
 class ConfiguracaoClinicaForm(forms.ModelForm):
     class Meta:
         model = Clinica
-        fields = ['nome', 'razao_social', 'cnpj', 'telefone', 'whatsapp', 'email', 'endereco', 'cidade', 'uf',
+        fields = ['nome', 'razao_social', 'cnpj', 'cnes', 'telefone', 'whatsapp', 'email', 'endereco', 'cidade', 'uf',
                   'logo', 'fuso_horario', 'lembrete_horas_antes', 'callcenter_dias_apos', 'notificar_whatsapp', 'notificar_email',
-                  'whatsapp_provedor', 'whatsapp_api_url', 'whatsapp_instancia', 'whatsapp_token',
+                  'whatsapp_provedor', 'whatsapp_api_url', 'whatsapp_instancia', 'whatsapp_token', 'resposta_sim_nao',
                   'email_remetente', 'smtp_host', 'smtp_porta', 'smtp_usuario', 'smtp_senha', 'smtp_tls',
                   'notificar_sms', 'sms_provedor', 'sms_conta', 'sms_token', 'sms_remetente', 'sms_url',
                   'enviar_nps', 'enviar_aniversario', 'agendamento_online',

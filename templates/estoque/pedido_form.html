@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Pedido de compra{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-cart3"></i>{% if obj %}Pedido {{ obj.pk }}{% else %}Novo pedido de compra{% endif %}</h1>
+  <a href="{% url 'estoque:pedidos' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a></div>
+<form method="post" novalidate>{% csrf_token %}
+  <div class="card mb-3"><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.fornecedor col="col-md-5" %}{% include "_campo.html" with f=form.data col="col-md-2" %}
+    {% include "_campo.html" with f=form.previsao_entrega col="col-md-2" %}{% include "_campo.html" with f=form.nota_fiscal col="col-md-3" %}
+    {% include "_campo.html" with f=form.observacoes col="col-12" %}</div></div></div>
+  <div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Itens <button type="button" class="btn btn-sm btn-outline-primary" id="addItem"><i class="bi bi-plus"></i> Item</button></div>
+    <div class="card-body">{{ itens.management_form }}
+      <div id="itens">{% for f in itens %}<div class="row g-2 align-items-end border-bottom pb-2 mb-2">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+        {% include "_campo.html" with f=f.produto col="col-md-4" %}{% include "_campo.html" with f=f.quantidade col="col-md-2" %}
+        {% include "_campo.html" with f=f.custo_unitario col="col-md-2" %}{% include "_campo.html" with f=f.lote col="col-md-2" %}{% include "_campo.html" with f=f.validade col="col-md-2" %}
+        {% if f.instance.pk %}<div class="col-12"><div class="form-check">{{ f.DELETE }}<label class="form-check-label small" for="{{ f.DELETE.id_for_label }}">remover</label></div></div>{% endif %}</div>{% endfor %}</div>
+      <template id="tpl">{% with f=itens.empty_form %}<div class="row g-2 align-items-end border-bottom pb-2 mb-2">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+        {% include "_campo.html" with f=f.produto col="col-md-4" %}{% include "_campo.html" with f=f.quantidade col="col-md-2" %}
+        {% include "_campo.html" with f=f.custo_unitario col="col-md-2" %}{% include "_campo.html" with f=f.lote col="col-md-2" %}{% include "_campo.html" with f=f.validade col="col-md-2" %}</div>{% endwith %}</template>
+    </div></div>
+  <div class="text-end mb-4"><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar pedido</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>document.getElementById('addItem').addEventListener('click', function () {
+  var t = document.getElementById('id_itens-TOTAL_FORMS'), n = parseInt(t.value, 10), d = document.createElement('div');
+  d.innerHTML = document.getElementById('tpl').innerHTML.replace(/__prefix__/g, n); document.getElementById('itens').appendChild(d.firstElementChild); t.value = n + 1; });</script>
+{% endblock %}

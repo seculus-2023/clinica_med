@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Caixa{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-safe"></i>Caixa de {{ cx.usuario }}</h1>
+  <p>{{ cx.aberto_em|date:"d/m/Y H:i" }} até {{ cx.fechado_em|date:"d/m/Y H:i"|default:"(aberto)" }}</p></div>
+  <div class="d-flex gap-2"><button class="btn btn-light border" onclick="print()"><i class="bi bi-printer"></i> Imprimir</button><a href="{% url 'financeiro:caixa' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i> Voltar</a></div></div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card kpi"><div><div class="v">{{ cx.valor_abertura|moeda }}</div><div class="l">Troco inicial</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card kpi"><div><div class="v">{{ r.total|moeda }}</div><div class="l">Movimentado</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card kpi"><div><div class="v">{{ r.dinheiro_esperado|moeda }}</div><div class="l">Dinheiro esperado</div></div></div></div>
+  <div class="col-6 col-md-3"><div class="card kpi"><div><div class="v {% if r.diferenca and r.diferenca != 0 %}text-danger{% endif %}">{% if r.diferenca is not None %}{{ r.diferenca|moeda }}{% else %}-{% endif %}</div><div class="l">Diferença (contado {{ cx.valor_informado|moeda }})</div></div></div></div>
+</div>
+<div class="row g-3"><div class="col-lg-8"><div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+  <thead><tr><th>Data</th><th>Descrição</th><th>Paciente</th><th>Forma</th><th class="num">Valor</th></tr></thead>
+  <tbody>{% for l in movs %}<tr><td>{{ l.data_pagamento|date:"d/m" }}</td><td>{{ l.descricao }}</td><td>{{ l.paciente|default:"-" }}</td><td>{{ l.get_forma_pagamento_display|default:"-" }}</td><td class="num">{% if l.tipo == 'despesa' %}-{% endif %}{{ l.valor_pago|default:l.valor|moeda }}</td></tr>{% empty %}<tr><td colspan="5" class="small text-muted p-3">Sem movimentos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header">Por forma</div><ul class="list-group list-group-flush">{% for f, v in r.por_forma %}<li class="list-group-item d-flex justify-content-between"><span>{{ f }}</span><b>{{ v|moeda }}</b></li>{% endfor %}</ul>
+    {% if cx.observacoes %}<div class="card-body small border-top">{{ cx.observacoes|linebreaksbr }}</div>{% endif %}</div></div></div>
+{% endblock %}

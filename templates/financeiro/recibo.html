@@ -1,0 +1,20 @@
+{% load clinica_tags %}<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Recibo {{ lan.pk }}</title>
+<style>@page { size: A4; margin: 15mm; } body { font-family: "Segoe UI", Arial, sans-serif; max-width: 760px; margin: 20px auto; color: #111; font-size: 14px; }
+.recibo { border: 2px solid #139e86; border-radius: 10px; padding: 22px 26px; margin-bottom: 18px; } .topo { display: flex; justify-content: space-between; align-items: flex-start; }
+h1 { font-size: 22px; letter-spacing: 3px; margin: 0; } .valor { font-size: 20px; font-weight: bold; border: 1px solid #333; padding: 6px 14px; border-radius: 6px; }
+p { line-height: 1.8; } .assin { margin-top: 50px; text-align: center; } .assin div { border-top: 1px solid #111; width: 300px; margin: 0 auto 4px; }
+.muted { color: #555; font-size: 12px; } .no-print { text-align: right; } @media print { .no-print { display: none; } .via2 { page-break-before: avoid; } }</style></head>
+<body><div class="no-print"><button onclick="print()">Imprimir</button></div>
+{% for via in "12" %}
+<div class="recibo {% if forloop.last %}via2{% endif %}">
+  <div class="topo"><div><h1>RECIBO</h1><div class="muted">Nº {{ lan.pk }}{% if lan.parcela %} · parcela {{ lan.parcela }}{% endif %} · {% if forloop.first %}via do paciente{% else %}via da clínica{% endif %}</div></div>
+    <div class="valor">{{ valor|moeda }}</div></div>
+  <p>Recebi(emos) de <b>{{ lan.paciente.nome|default:"________________________________" }}</b>{% if lan.paciente.cpf %}, CPF {{ lan.paciente.cpf }}{% endif %},
+    a importância de <b>{{ valor|moeda }}</b> (<i>{{ extenso }}</i>), referente a <b>{{ lan.descricao }}</b>{% if forma %}, pago em {{ forma|lower }}{% endif %}.</p>
+  <p>Para clareza, firmo(amos) o presente.</p>
+  <p>{{ c.cidade|default:"" }}{% if c.cidade %}, {% endif %}{{ lan.data_pagamento|date:"d \d\e F \d\e Y" }}.</p>
+  <div class="assin"><div></div><b>{{ c.razao_social|default:c.nome }}</b><br><span class="muted">{% if c.cnpj %}CNPJ {{ c.cnpj }} · {% endif %}{{ c.endereco }} {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}</span></div>
+</div>
+{% endfor %}
+</body></html>

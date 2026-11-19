@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block titulo %}Odontograma - {{ p.nome }}{% endblock %}
+{% block head %}<style>
+  .arcada { display: flex; flex-wrap: nowrap; gap: 4px; justify-content: center; overflow-x: auto; padding-bottom: 4px; }
+  .dente { text-align: center; cursor: pointer; flex: 0 0 auto; }
+  .dente svg { width: 46px; height: 46px; display: block; }
+  .dente .n { font-size: .72rem; font-weight: 600; color: #445; }
+  .dente.sel svg { outline: 2px solid var(--ma-primary); outline-offset: 2px; border-radius: 6px; }
+  .face { stroke: #334155; stroke-width: 1.2; }
+  .linha-media { width: 2px; background: #cbd5e1; margin: 0 6px; flex: 0 0 2px; }
+  .leg { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; font-size: .8rem; }
+  .leg i { width: 14px; height: 14px; border: 1px solid #334155; border-radius: 3px; display: inline-block; }
+</style>{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-grid-3x3"></i>Odontograma</h1><p>{{ p.nome }} — clique no dente e escolha a situação (do dente inteiro ou por face).</p></div>
+  <div class="d-flex gap-2"><div class="btn-group" role="group" aria-label="Dentição">
+    <button type="button" class="btn btn-sm btn-primary" data-dent="perm">Permanente</button><button type="button" class="btn btn-sm btn-light border" data-dent="dec">Decídua</button></div>
+    <a href="{% url 'prontuario:paciente' p.pk %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i> Prontuário</a></div></div>
+<div class="card mb-3"><div class="card-body">
+  <div class="arcada mb-2" id="sup"></div>
+  <hr class="my-2">
+  <div class="arcada" id="inf"></div>
+  <div class="mt-3">{% for s, nome, cor in situacoes %}<span class="leg"><i style="background: {{ cor }}"></i>{{ nome }}</span>{% endfor %}</div>
+</div></div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header" id="tituloDente">Selecione um dente</div><div class="card-body" id="painel">
+    <div class="text-muted small">Faces: O (oclusal/incisal), M (mesial), D (distal), V (vestibular), L (lingual/palatina).</div></div></div></div>
+  <div class="col-lg-6"><div class="card mb-3"><div class="card-body">
+      <label class="form-label" for="obs">Observações</label><textarea id="obs" class="form-control" rows="3" {% if not pode_editar %}disabled{% endif %}>{{ od.observacoes }}</textarea>
+      {% if pode_editar %}<div class="text-end mt-2"><span class="small me-2" id="status"></span><button class="btn btn-primary" id="salvar"><i class="bi bi-check2"></i> Salvar odontograma</button></div>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header">Histórico</div><ul class="list-group list-group-flush" style="max-height: 260px; overflow-y: auto;">
+      {% for h in historico %}<li class="list-group-item small"><b>{{ h.dente }}</b> — {{ h.descricao }} <span class="text-muted">· {{ h.criado_em|date:"d/m/Y H:i" }} · {{ h.usuario|default:"" }}</span></li>{% empty %}<li class="list-group-item small text-muted">Sem alterações registradas.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var dados = {{ dados|safe }}, SIT = {{ sit_json|safe }}, ARC = {{ arcadas|safe }}, edita = {{ pode_editar|yesno:'true,false' }};
+  var cor = {}, nome = {}; SIT.forEach(function (s) { cor[s[0]] = s[2]; nome[s[0]] = s[1]; });
+  var sel = null, dent = 'perm';
+  function svg(num) {
+    var d = dados[num] || { s: 'higido', f: {} }, base = cor[d.s] || '#fff', f = d.f || {};
+    function c(face) { return cor[f[face]] || (d.s === 'higido' ? '#fff' : base); }
+    var x = '';
+    if (d.s === 'ausente' || d.s === 'extracao') x = '<line x1="4" y1="4" x2="42" y2="42" stroke="' + (d.s === 'ausente' ? '#475569' : '#ea580c') + '" stroke-width="3"/><line x1="42" y1="4" x2="4" y2="42" stroke="' + (d.s === 'ausente' ? '#475569' : '#ea580c') + '" stroke-width="3"/>';
+    if (d.s === 'implante') x = '<rect x="20" y="30" width="6" height="14" fill="#16a34a"/>';
+    return '<svg viewBox="0 0 46 46" aria-label="Dente ' + num + '">' +
+      '<polygon class="face" points="2,2 44,2 32,14 14,14" fill="' + c('V') + '"/>' +
+      '<polygon class="face" points="44,2 44,44 32,32 32,14" fill="' + c('D') + '"/>' +
+      '<polygon class="face" points="44,44 2,44 14,32 32,32" fill="' + c('L') + '"/>' +
+      '<polygon class="face" points="2,44 2,2 14,14 14,32" fill="' + c('M') + '"/>' +
+      '<rect class="face" x="14" y="14" width="18" height="18" fill="' + c('O') + '"/>' + x + '</svg>';
+  }
+  function desenhar() {
+    ['sup', 'inf'].forEach(function (lado) {
+      var nums = dent === 'perm' ? ARC[lado] : ARC['d' + lado], box = document.getElementById(lado), meio = nums.length / 2;
+      box.innerHTML = '';
+      nums.forEach(function (n, i) {
+        if (i === meio) { var m = document.createElement('div'); m.className = 'linha-media'; box.appendChild(m); }
+        var el = document.createElement('div'); el.className = 'dente' + (sel === String(n) ? ' sel' : '');
+        el.innerHTML = (lado === 'sup' ? '<div class="n">' + n + '</div>' : '') + svg(n) + (lado === 'inf' ? '<div class="n">' + n + '</div>' : '');
+        el.title = n + ' - ' + nome[(dados[n] || {}).s || 'higido'];
+        el.addEventListener('click', function () { sel = String(n); desenhar(); painel(); });
+        box.appendChild(el);
+      });
+    });
+  }
+  function opcoes(atual, vazio) {
+    return (vazio ? '<option value="">(igual ao dente)</option>' : '') + SIT.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === atual ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('');
+  }
+  function painel() {
+    var d = dados[sel] || { s: 'higido', f: {} };
+    document.getElementById('tituloDente').textContent = 'Dente ' + sel;
+    var faces = [['O', 'Oclusal / incisal'], ['M', 'Mesial'], ['D', 'Distal'], ['V', 'Vestibular'], ['L', 'Lingual / palatina']];
+    var h = '<label class="form-label">Situação do dente</label><select class="form-select mb-3" id="sDente"' + (edita ? '' : ' disabled') + '>' + opcoes(d.s) + '</select><div class="row g-2">';
+    faces.forEach(function (f) { h += '<div class="col-6"><label class="form-label small mb-0">' + f[1] + '</label><select class="form-select form-select-sm" data-face="' + f[0] + '"' + (edita ? '' : ' disabled') + '>' + opcoes((d.f || {})[f[0]] || '', true) + '</select></div>'; });
+    document.getElementById('painel').innerHTML = h + '</div>';
+    document.getElementById('sDente').addEventListener('change', function () { atualizar(); });
+    document.querySelectorAll('[data-face]').forEach(function (s) { s.addEventListener('change', atualizar); });
+  }
+  function atualizar() {
+    var f = {}; document.querySelectorAll('[data-face]').forEach(function (s) { if (s.value) f[s.dataset.face] = s.value; });
+    var s = document.getElementById('sDente').value;
+    if (s === 'higido' && !Object.keys(f).length) delete dados[sel]; else dados[sel] = { s: s, f: f };
+    desenhar(); document.getElementById('status') && (document.getElementById('status').textContent = 'alterações não salvas');
+  }
+  document.querySelectorAll('[data-dent]').forEach(function (b) { b.addEventListener('click', function () {
+    dent = b.dataset.dent; document.querySelectorAll('[data-dent]').forEach(function (x) { x.className = 'btn btn-sm ' + (x === b ? 'btn-primary' : 'btn-light border'); }); desenhar(); }); });
+  var btn = document.getElementById('salvar');
+  if (btn) btn.addEventListener('click', function () {
+    btn.disabled = true;
+    fetch('{% url "prontuario:odontograma_salvar" p.pk %}', { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+      body: JSON.stringify({ dados: dados, observacoes: document.getElementById('obs').value }) })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        document.getElementById('status').textContent = d.ok ? '✔ salvo (' + d.mudancas + ' alteração(ões))' : 'erro: ' + d.erro;
+        if (d.ok && d.mudancas) setTimeout(function () { location.reload(); }, 800);
+      }).finally(function () { btn.disabled = false; });
+  });
+  desenhar();
+})();
+</script>
+{% endblock %}

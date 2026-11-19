@@ -12,6 +12,7 @@ MODULOS = [
     ('sessoes', 'Pacotes de sessões'),
     ('estoque', 'Estoque'),
     ('financeiro', 'Financeiro'),
+    ('convenios', 'Convênios e faturamento TISS'),
     ('prontuario', 'Prontuário eletrônico'),
     ('documentos', 'Prescrições e documentos'),
     ('callcenter', 'Call center'),
@@ -49,6 +50,7 @@ class Clinica(models.Model):
     nome = models.CharField('Nome fantasia', max_length=150)
     razao_social = models.CharField('Razão social', max_length=200, blank=True)
     cnpj = models.CharField('CNPJ', max_length=20, blank=True)
+    cnes = models.CharField('CNES', max_length=7, blank=True, help_text='Cadastro Nacional de Estabelecimentos de Saúde (TISS).')
     telefone = models.CharField(max_length=20, blank=True)
     whatsapp = models.CharField('WhatsApp da clínica', max_length=20, blank=True,
                                 help_text='Número remetente das mensagens enviadas aos pacientes e médicos.')
@@ -77,6 +79,8 @@ class Clinica(models.Model):
         'Instância / Phone Number ID', max_length=120, blank=True,
         help_text='Evolution/Z-API: vazio = usa o próprio número de WhatsApp da clínica. Meta: Phone Number ID.')
     whatsapp_token = models.CharField('Token / API key', max_length=300, blank=True)
+    webhook_token = models.CharField('Token do webhook (recebimento)', max_length=64, blank=True, editable=False)
+    resposta_sim_nao = models.BooleanField('Paciente confirma/cancela respondendo SIM ou NÃO no WhatsApp', default=True)
     email_remetente = models.EmailField('E-mail remetente', blank=True)
     smtp_host = models.CharField('Servidor SMTP', max_length=120, blank=True,
                                  help_text='Opcional: e-mail próprio da clínica (ex.: smtp.gmail.com). Vazio = usa o do .env.')

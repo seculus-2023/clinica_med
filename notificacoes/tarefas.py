@@ -89,6 +89,13 @@ def lembretes_usuarios(clinica):
             clinica, 'financeiro', f'{venc.count()} lançamento(s) financeiro(s) vencendo/vencidos',
             link=reverse('financeiro:lancamentos') + '?status=atrasado'):
         n += 1
+    from estoque.compras import lotes_a_vencer
+    vencendo = lotes_a_vencer(clinica, 30)
+    if vencendo and _lembrete_unico_hoje(
+            clinica, 'lotes', f'{len(vencendo)} lote(s) vencendo em até 30 dias',
+            mensagem=', '.join(f'{m.produto.nome} ({m.validade:%d/%m})' for m in vencendo[:6]),
+            link=reverse('estoque:lotes') + '?dias=30'):
+        n += 1
     # lembretes manuais marcados para envio por e-mail
     Usuario = get_user_model()
     for lem in Lembrete.objects.filter(clinica=clinica, enviar_email=True, email_enviado=False, concluido=False,
@@ -140,4 +147,9 @@ def processar_lembretes():
         except Exception:  # noqa: BLE001
             log.exception('Erro ao processar lembretes da clínica %s', clinica.pk)
     timezone.deactivate()
+    try:
+        from assinaturas.tarefas import processar as processar_saas
+        resumo['saas'] = processar_saas()
+    except Exception:  # noqa: BLE001
+        log.exception('Erro nas rotinas do SaaS')
     return resumo

@@ -71,6 +71,24 @@ class PacoteSessao(ClinicaModel):
             self.save(update_fields=['status', 'atualizado_em'])
 
 
+class Recurso(ClinicaModel):
+    """Sala ou equipamento reservado junto com o atendimento (evita dois usos no mesmo horário)."""
+    TIPOS = [('sala', 'Sala / consultório'), ('equipamento', 'Equipamento')]
+    nome = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=12, choices=TIPOS, default='sala')
+    descricao = models.CharField('Descrição', max_length=200, blank=True)
+    cor = models.CharField('Cor', max_length=7, default='#64748b')
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['tipo', 'nome']
+        verbose_name = 'Sala / equipamento'
+        verbose_name_plural = 'Salas e equipamentos'
+
+    def __str__(self):
+        return self.nome
+
+
 class BloqueioAgenda(ClinicaModel):
     """Bloqueio de horários (férias, reunião, feriado...). Sem profissional = bloqueia a clínica toda."""
     medico = models.ForeignKey(Medico, on_delete=models.CASCADE, null=True, blank=True, related_name='bloqueios',
@@ -137,7 +155,16 @@ class Agendamento(ClinicaModel):
     pacote = models.ForeignKey(PacoteSessao, on_delete=models.SET_NULL, null=True, blank=True,
                                related_name='agendamentos', verbose_name='Pacote de sessões')
     convenio = models.BooleanField('Atendimento por convênio', default=False)
+    operadora = models.ForeignKey('convenios.Operadora', on_delete=models.PROTECT, null=True, blank=True,
+                                  related_name='agendamentos', verbose_name='Convênio')
+    plano = models.ForeignKey('convenios.Plano', on_delete=models.SET_NULL, null=True, blank=True)
+    AUTORIZACAO = [('nao_requer', 'Não requer'), ('pendente', 'Pendente'), ('autorizada', 'Autorizada'),
+                   ('negada', 'Negada')]
+    autorizacao_status = models.CharField('Autorização', max_length=12, choices=AUTORIZACAO, default='nao_requer')
+    autorizacao_senha = models.CharField('Senha / nº da autorização', max_length=30, blank=True)
     teleconsulta = models.BooleanField('Teleconsulta (vídeo)', default=False)
+    recurso = models.ForeignKey('Recurso', on_delete=models.PROTECT, null=True, blank=True, related_name='agendamentos',
+                                verbose_name='Sala / equipamento')
     origem = models.CharField(max_length=15, default='recepcao', editable=False,
                               choices=[('recepcao', 'Recepção'), ('online', 'Agendamento online')])
     checkin_em = models.DateTimeField('Check-in digital em', null=True, blank=True, editable=False)
@@ -174,9 +201,17 @@ class Agendamento(ClinicaModel):
             self.fim = self.inicio + timedelta(minutes=self.tipo.duracao_minutos or 30)
         if not self.pk and self.tipo_id and self.tipo.teleconsulta:
             self.teleconsulta = True
+        if not self.pk and not self.recurso_id and self.tipo_id and self.tipo.recurso_id:
+            self.recurso_id = self.tipo.recurso_id
+        if self.operadora_id:
+            self.convenio = True
         if self.valor is None and self.tipo_id:
+            from convenios.models import PrecoConvenio
+            preco = PrecoConvenio.buscar(self.operadora, self.plano, self.tipo) if self.operadora_id else None
             if self.pacote_id:
                 self.valor = 0
+            elif preco:
+                self.valor = preco.valor
             elif self.convenio and self.tipo.valor_convenio is not None:
                 self.valor = self.tipo.valor_convenio
             else:

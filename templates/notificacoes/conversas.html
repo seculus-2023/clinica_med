@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Conversas WhatsApp{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-chat-dots"></i>Conversas no WhatsApp</h1><p>Mensagens recebidas dos pacientes. Respostas "SIM" e "NÃO" confirmam ou cancelam a próxima consulta automaticamente.</p></div>
+  <a href="{% url 'notificacoes:conexao' %}" class="btn btn-light border"><i class="bi bi-gear"></i> Conexão / webhook</a></div>
+<form class="filtros mb-3"><input type="search" name="q" value="{{ q }}" class="form-control" style="max-width: 360px;" placeholder="Telefone, paciente ou texto"><button class="btn btn-light">Buscar</button></form>
+<div class="card"><div class="list-group list-group-flush">
+  {% for c in lista %}
+  <a href="{% url 'notificacoes:conversa' c.telefone %}" class="list-group-item list-group-item-action d-flex gap-3 align-items-center">
+    <span class="ic ic-green rounded-circle d-grid" style="width: 42px; height: 42px; place-items: center;"><i class="bi bi-person"></i></span>
+    <span class="flex-grow-1" style="min-width: 0;"><b>{{ c.m.paciente|default:c.m.nome_contato|default:c.telefone }}</b> <span class="small text-muted">{{ c.telefone }}</span>
+      <div class="small text-muted text-truncate">{{ c.m.texto }}{% if c.m.acao %} · <i>{{ c.m.acao }}</i>{% endif %}</div></span>
+    <span class="text-end small text-muted text-nowrap">{{ c.ultima|date:"d/m H:i" }}{% if c.nao_lidas %}<br><span class="badge text-bg-success rounded-pill">{{ c.nao_lidas }}</span>{% endif %}</span>
+  </a>
+  {% empty %}<div class="vazio"><i class="bi bi-chat"></i>Nenhuma mensagem recebida.{% if webhook %}<br><small>Para receber, cadastre no provedor o webhook:<br><code class="text-break">{{ webhook }}</code></small>{% endif %}</div>{% endfor %}
+</div></div>
+{% endblock %}

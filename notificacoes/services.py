@@ -48,6 +48,7 @@ def montar_texto(modelo, clinica, paciente, medico=None, ag=None):
     dados = {'paciente': paciente.nome.split()[0] if paciente and paciente.nome else '', 'paciente_completo': paciente.nome if paciente
              else '', 'clinica': clinica.nome, 'medico': medico.nome if medico else '',
              'telefone_clinica': clinica.telefone or clinica.whatsapp, 'whatsapp_clinica': clinica.whatsapp,
+             'link_portal': settings.SITE_URL + f'/portal/{clinica.codigo_publico}/',
              'endereco': clinica.endereco}
     if ag:
         ini = timezone.localtime(ag.inicio)
@@ -179,7 +180,7 @@ def _despachar(ids):
 
 
 def enfileirar(clinica, nome, telefone=None, email=None, assunto='', mensagem='', evento='', agendamento=None,
-               whatsapp=True, por_email=True, sms=True):
+               whatsapp=True, por_email=True, sms=True, mensagem_whatsapp=None):
     ids = []
     tel = normalizar_telefone(telefone)
     if sms and clinica.notificar_sms and clinica.sms_provedor != 'nenhum' and tel:
@@ -189,8 +190,8 @@ def enfileirar(clinica, nome, telefone=None, email=None, assunto='', mensagem=''
     if whatsapp and clinica.notificar_whatsapp and tel:
         ids.append(Notificacao.objects.create(clinica=clinica, canal='whatsapp', destinatario=tel,
                                               remetente=numero_remetente(clinica),
-                                              nome_destinatario=nome, mensagem=mensagem, evento=evento,
-                                              agendamento=agendamento).pk)
+                                              nome_destinatario=nome, mensagem=mensagem_whatsapp or mensagem,
+                                              evento=evento, agendamento=agendamento).pk)
     if por_email and clinica.notificar_email and email:
         ids.append(Notificacao.objects.create(clinica=clinica, canal='email', destinatario=email,
                                               remetente=clinica.email_remetente or settings.DEFAULT_FROM_EMAIL,
@@ -204,7 +205,12 @@ def notificar_agendamento(ag, evento, forcar=False):
     campo, assunto = EVENTOS.get(evento, EVENTOS['lembrete'])
     p = ag.paciente
     msg = montar_mensagem(ag, getattr(ag.clinica, campo))
+    msg_wpp = msg
+    if (evento in ('agendamento', 'reagendamento', 'lembrete') and ag.clinica.resposta_sim_nao
+            and ag.clinica.whatsapp_provedor != 'simulado'):
+        msg_wpp = msg + '\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.'
     return enfileirar(ag.clinica, p.nome, telefone=p.celular, email=p.email, assunto=assunto, mensagem=msg,
+                      mensagem_whatsapp=msg_wpp,
                       evento=evento, agendamento=ag, whatsapp=p.aceita_whatsapp or forcar,
                       por_email=p.aceita_email or forcar,
                       sms=(p.aceita_sms or forcar) and evento in ('agendamento', 'reagendamento', 'lembrete',

@@ -101,7 +101,11 @@ def baixar(request, pk):
         lan.forma_pagamento = request.POST.get('forma') or lan.forma_pagamento
         lan.valor_pago = None
         messages.success(request, f'"{lan.descricao}" baixado como pago.')
+    if request.POST.get('estornar'):
+        lan.caixa = None
     lan.save()
+    from .gestao import vincular_caixa
+    vincular_caixa(request, lan)
     prox = request.POST.get('next', '')
     return redirect(prox if prox.startswith('/') else 'financeiro:lancamentos')
 

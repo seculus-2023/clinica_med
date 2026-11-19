@@ -283,6 +283,10 @@ def relatorios(request):
     info = next((r for r in disponiveis if r[0] == tipo), None)
     if info:
         cab, linhas, total = _gerar(tipo, request.clinica, ini, fim, request)
+        if request.GET.get('formato') == 'xlsx':
+            from .exportar import xlsx_resposta
+            return xlsx_resposta(info[1], cab, linhas + ([total] if total else []), f'relatorio_{tipo}_{ini}_{fim}.xlsx',
+                                 titulo=f'{info[1]} - {request.clinica.nome} - {ini:%d/%m/%Y} a {fim:%d/%m/%Y}')
         if request.GET.get('formato') == 'csv':
             resp = HttpResponse(content_type='text/csv; charset=utf-8')
             resp['Content-Disposition'] = f'attachment; filename="relatorio_{tipo}_{ini}_{fim}.csv"'

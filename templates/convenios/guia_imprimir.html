@@ -1,0 +1,17 @@
+{% load clinica_tags %}<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Guia {{ g.numero_guia }}</title>
+<style>body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; } h1 { font-size: 15px; margin: 0 0 6px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 8px; } td { border: 1px solid #555; padding: 4px 6px; vertical-align: top; }
+td small { display: block; color: #555; font-size: 9px; text-transform: uppercase; } .no-print { margin-bottom: 10px; } @media print { .no-print { display: none; } }</style></head>
+<body><div class="no-print"><button onclick="print()">Imprimir</button></div>
+<h1>{{ g.get_tipo_display|upper }} — Padrão TISS</h1>
+<table><tr><td><small>1 - Registro ANS</small>{{ g.operadora.registro_ans }}</td><td><small>2 - Nº guia no prestador</small>{{ g.numero_guia }}</td><td><small>Nº guia operadora</small>{{ g.numero_guia_operadora|default:"-" }}</td><td><small>Senha</small>{{ g.senha|default:"-" }}</td></tr></table>
+<table><tr><td colspan="2"><small>Operadora</small>{{ g.operadora }}{% if g.plano %} — {{ g.plano.nome }}{% endif %}</td></tr>
+  <tr><td><small>Número da carteira</small>{{ g.carteirinha }}</td><td><small>Nome do beneficiário</small>{{ g.paciente.nome }}</td></tr></table>
+<table><tr><td><small>Contratado executante</small>{{ c.nome }} — CNPJ {{ c.cnpj }} — CNES {{ c.cnes|default:"-" }}</td><td><small>Código na operadora</small>{{ g.operadora.codigo_prestador|default:"-" }}</td></tr>
+  <tr><td><small>Profissional executante</small>{{ g.medico.nome }} — {{ g.medico.registro_completo }}</td><td><small>CBO</small>{{ g.medico.cbo|default:"-" }}</td></tr></table>
+<table><tr><td><small>Data do atendimento</small>{{ g.data_atendimento|date:"d/m/Y" }}</td><td><small>Tipo de consulta / caráter</small>{{ g.get_tipo_consulta_display }} / {{ g.get_carater_display }}</td><td><small>CID</small>{{ g.cid|default:"-" }}</td></tr>
+  {% if g.indicacao_clinica %}<tr><td colspan="3"><small>Indicação clínica</small>{{ g.indicacao_clinica }}</td></tr>{% endif %}</table>
+<table><tr><td><small>Tabela</small>{{ g.codigo_tabela }}</td><td><small>Código do procedimento</small>{{ g.codigo_procedimento }}</td><td><small>Descrição</small>{{ g.descricao_procedimento }}</td><td><small>Qtd.</small>{{ g.quantidade }}</td><td><small>Valor unit.</small>{{ g.valor_unitario|moeda }}</td><td><small>Valor total</small><b>{{ g.valor_total|moeda }}</b></td></tr></table>
+<table><tr><td style="height: 60px;"><small>Assinatura do profissional</small></td><td><small>Assinatura do beneficiário</small></td></tr></table>
+</body></html>

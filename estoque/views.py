@@ -17,9 +17,18 @@ class ProdutoForm(ClinicaModelForm):
 
 
 class MovimentoForm(ClinicaModelForm):
+    gerar_despesa = forms.BooleanField(label='Lançar a compra no contas a pagar', required=False, initial=True,
+                                       help_text='Só para entradas (compra) com custo informado.')
+    vencimento_despesa = forms.DateField(label='Vencimento do pagamento', required=False)
+
     class Meta:
         model = MovimentoEstoque
         exclude = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            del self.fields['gerar_despesa'], self.fields['vencimento_despesa']
 
     def clean(self):
         d = super().clean()
@@ -68,6 +77,17 @@ class MovimentoCrud(Crud):
     @classmethod
     def antes_salvar(cls, request, obj, form):
         obj.usuario = obj.usuario or request.user
+        if obj.fornecedor_cad_id and not obj.fornecedor:
+            obj.fornecedor = obj.fornecedor_cad.nome[:150]
+        d = form.cleaned_data
+        if not obj.pk and d.get('gerar_despesa') and obj.tipo == 'entrada' and obj.custo_unitario:
+            from datetime import timedelta
+            from .compras import lancar_despesa
+            prazo = obj.fornecedor_cad.prazo_pagamento_dias if obj.fornecedor_cad_id else 30
+            obj.lancamento = lancar_despesa(
+                request.clinica, f'Compra - {obj.produto}', obj.quantidade * obj.custo_unitario,
+                d.get('vencimento_despesa') or obj.data + timedelta(days=prazo), obj.fornecedor_cad or obj.fornecedor,
+                f'NF {obj.nota_fiscal}' if obj.nota_fiscal else '', request.user)
 
     @classmethod
     def queryset(cls, request):

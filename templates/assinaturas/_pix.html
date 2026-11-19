@@ -1,0 +1,6 @@
+{% if f.pix %}<div class="d-flex flex-wrap gap-3 align-items-center mt-2">
+  <div class="qr-pix bg-white p-2 border rounded" data-pix="{{ f.pix }}" style="width: 176px; height: 176px;"></div>
+  <div style="flex: 1 1 260px; min-width: 0;"><div class="small fw-semibold mb-1">PIX copia e cola — {{ f.valor }} (venc. {{ f.vencimento|date:"d/m/Y" }})</div>
+    <textarea class="form-control form-control-sm font-monospace" rows="3" readonly onclick="this.select()">{{ f.pix }}</textarea>
+    <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.textContent='Copiado!'">Copiar código</button></div>
+</div>{% endif %}

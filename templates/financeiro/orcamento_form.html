@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block titulo %}Orçamento{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-file-earmark-ruled"></i>{% if obj %}Orçamento {{ obj.pk }}{% else %}Novo orçamento{% endif %}</h1>
+  <a href="{% url 'financeiro:orcamentos' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a></div>
+<form method="post" novalidate>{% csrf_token %}
+  <div class="card mb-3"><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.paciente col="col-md-5" %}{% include "_campo.html" with f=form.medico col="col-md-4" %}{% include "_campo.html" with f=form.status col="col-md-3" %}
+    {% include "_campo.html" with f=form.data col="col-md-3" %}{% include "_campo.html" with f=form.validade col="col-md-3" %}
+    {% include "_campo.html" with f=form.desconto col="col-md-3" %}{% include "_campo.html" with f=form.parcelas col="col-md-3" %}
+  </div></div></div>
+  <div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Itens <button type="button" class="btn btn-sm btn-outline-primary" id="addItem"><i class="bi bi-plus"></i> Item</button></div>
+    <div class="card-body">{{ itens.management_form }}
+      <div id="itens">{% for f in itens %}<div class="row g-2 align-items-end border-bottom pb-2 mb-2 linha">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+        {% include "_campo.html" with f=f.tipo col="col-md-4" %}{% include "_campo.html" with f=f.descricao col="col-md-4" %}
+        {% include "_campo.html" with f=f.quantidade col="col-md-1" %}{% include "_campo.html" with f=f.valor_unitario col="col-md-2" %}
+        {% if f.instance.pk %}<div class="col-md-1"><div class="form-check">{{ f.DELETE }}<label class="form-check-label small" for="{{ f.DELETE.id_for_label }}">remover</label></div></div>{% endif %}</div>{% endfor %}</div>
+      <template id="tpl">{% with f=itens.empty_form %}<div class="row g-2 align-items-end border-bottom pb-2 mb-2 linha">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+        {% include "_campo.html" with f=f.tipo col="col-md-4" %}{% include "_campo.html" with f=f.descricao col="col-md-4" %}
+        {% include "_campo.html" with f=f.quantidade col="col-md-1" %}{% include "_campo.html" with f=f.valor_unitario col="col-md-2" %}</div>{% endwith %}</template>
+      <div class="text-end fw-bold fs-5" id="total"></div>
+    </div></div>
+  <div class="card mb-3"><div class="card-body">{% include "_campo.html" with f=form.observacoes col="" %}</div></div>
+  <div class="d-flex justify-content-end gap-2 mb-4"><button class="btn btn-outline-primary">Salvar</button><button class="btn btn-primary" name="imprimir" value="1"><i class="bi bi-printer"></i> Salvar e imprimir</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var precos = {{ precos|safe }}, box = document.getElementById('itens'), total = document.getElementById('id_itens-TOTAL_FORMS');
+  function num(v) { v = (v || '').replace(/\./g, '').replace(',', '.'); return parseFloat(v) || 0; }
+  function brl(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function recalcular() {
+    var t = 0;
+    box.querySelectorAll('.linha').forEach(function (l) {
+      var del = l.querySelector('[name$="-DELETE"]'); if (del && del.checked) return;
+      t += num((l.querySelector('[name$="-quantidade"]') || {}).value) * num((l.querySelector('[name$="-valor_unitario"]') || {}).value);
+    });
+    t -= num(document.getElementById('id_desconto').value);
+    document.getElementById('total').textContent = 'Total: ' + brl(Math.max(t, 0));
+  }
+  box.addEventListener('change', function (e) {
+    if (e.target.name && e.target.name.endsWith('-tipo')) {
+      var l = e.target.closest('.linha'), v = l.querySelector('[name$="-valor_unitario"]'), q = l.querySelector('[name$="-quantidade"]');
+      if (precos[e.target.value] && !num(v.value)) v.value = precos[e.target.value].replace('.', ',');
+      if (!q.value) q.value = 1;
+    }
+    recalcular();
+  });
+  box.addEventListener('input', recalcular);
+  document.getElementById('id_desconto').addEventListener('input', recalcular);
+  document.getElementById('addItem').addEventListener('click', function () {
+    var n = parseInt(total.value, 10), d = document.createElement('div');
+    d.innerHTML = document.getElementById('tpl').innerHTML.replace(/__prefix__/g, n);
+    box.appendChild(d.firstElementChild); total.value = n + 1;
+  });
+  recalcular();
+})();
+</script>
+{% endblock %}

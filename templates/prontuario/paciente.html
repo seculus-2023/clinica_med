@@ -9,6 +9,10 @@
     {% if pode_editar %}
       <a href="{% url 'prontuario:atendimento_novo' p.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo atendimento</a>
       <a href="{% url 'prontuario:anexo_novo' p.pk %}" class="btn btn-outline-primary"><i class="bi bi-paperclip"></i> Exame / anexo</a>
+      <a href="{% url 'prontuario:termo_novo' p.pk %}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-check"></i> Termo de consentimento</a>
+    {% endif %}
+    <a href="{% url 'prontuario:odontograma' p.pk %}" class="btn btn-light border"><i class="bi bi-grid-3x3"></i> Odontograma</a>
+    {% if pode_editar %}
       {% if pode_documentos %}<a href="{% url 'documentos:documento_novo' %}?paciente={{ p.pk }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-medical"></i> Receita / atestado</a>{% endif %}
     {% endif %}
     <a href="{% url 'prontuario:imprimir' p.pk %}" target="_blank" class="btn btn-light"><i class="bi bi-printer"></i> Imprimir</a>
@@ -23,6 +27,7 @@
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#historico" type="button">Histórico clínico</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#atendimentos" type="button">Atendimentos ({{ atendimentos|length }})</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#vitais" type="button">Sinais vitais</button></li>
+  {% if crescimento %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#crescimento" type="button">Curva de crescimento</button></li>{% endif %}
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#documentos" type="button">Prescrições e documentos ({{ documentos|length }})</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#laboratorio" type="button">Exames laboratoriais</button></li>
   <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#exames" type="button">Exames e anexos ({{ anexos|length }})</button></li>
@@ -135,6 +140,13 @@
       {% empty %}<tr><td colspan="5"><div class="vazio">Nenhum documento.</div></td></tr>{% endfor %}</tbody></table></div></div>
   </div>
 
+  {% if crescimento %}<div class="tab-pane fade" id="crescimento">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2"><span class="small text-muted">Medidas do paciente por idade (meses). Percentis aparecem quando as tabelas da OMS são importadas.</span>
+      <div class="btn-group btn-group-sm"><button type="button" class="btn btn-primary" data-curva="peso">Peso</button><button type="button" class="btn btn-light border" data-curva="altura">Estatura</button><button type="button" class="btn btn-light border" data-curva="imc">IMC</button></div></div>
+    <div class="card"><div class="card-body"><div style="height: 320px;"><canvas id="gCresc"></canvas></div></div></div>
+    {% if perm.prontuario == 'editar' %}<div class="small mt-1"><a href="{% url 'prontuario:importar_curvas' %}">Importar curvas de referência (OMS)</a></div>{% endif %}
+  </div>{% endif %}
+
   <!-- Laboratório: comparativo -->
   <div class="tab-pane fade" id="laboratorio">
     <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">
@@ -157,6 +169,9 @@
   </div>
 
   <!-- Exames -->
+  {% if termos %}<div class="card mb-3"><div class="card-header">Termos de consentimento assinados</div><ul class="list-group list-group-flush">
+    {% for t in termos %}<li class="list-group-item d-flex justify-content-between small"><span><b>{{ t.titulo }}</b> — {{ t.assinado_em|date:"d/m/Y H:i" }} · {{ t.assinante_nome }} ({{ t.assinante_relacao }})</span>
+      <a href="{% url 'prontuario:termo' t.pk %}" target="_blank"><i class="bi bi-printer"></i></a></li>{% endfor %}</ul></div>{% endif %}
   <div class="tab-pane fade" id="exames">
     <div class="card"><div class="table-responsive"><table class="table table-hover">
       <thead><tr><th>Data</th><th>Tipo</th><th>Título</th><th>Resultado</th><th>Arquivo</th></tr></thead>
@@ -177,6 +192,29 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% if crescimento %}
+<script>
+(function () {
+  var D = {{ crescimento|safe }}, g = null, un = { peso: 'kg', altura: 'cm', imc: 'kg/m²' };
+  function desenhar(ind) {
+    var ds = [], ref = D.refs[ind], pts = D.pontos[ind] || [];
+    if (ref) {
+      [['P3', 1, '#f87171'], ['P15', 2, '#fbbf24'], ['P50', 3, '#16a34a'], ['P85', 4, '#fbbf24'], ['P97', 5, '#f87171']].forEach(function (p) {
+        var dados = ref.filter(function (r) { return r[p[1]] !== null; }).map(function (r) { return { x: r[0], y: r[p[1]] }; });
+        if (dados.length) ds.push({ label: p[0], data: dados, borderColor: p[2], borderWidth: 1.2, pointRadius: 0, fill: false, borderDash: p[0] === 'P50' ? [] : [5, 4] });
+      });
+    }
+    ds.push({ label: 'Paciente (' + un[ind] + ')', data: pts.map(function (p) { return { x: p[0], y: p[1] }; }), borderColor: '#0b2a6b', backgroundColor: '#0b2a6b', pointRadius: 5, showLine: true, tension: .2 });
+    if (g) g.destroy();
+    g = new Chart(document.getElementById('gCresc'), { type: 'scatter', data: { datasets: ds }, options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { title: { display: true, text: 'Idade (meses)' } }, y: { title: { display: true, text: un[ind] } } }, plugins: { legend: { position: 'bottom' } } } });
+  }
+  document.querySelectorAll('[data-curva]').forEach(function (b) { b.addEventListener('click', function () {
+    document.querySelectorAll('[data-curva]').forEach(function (x) { x.className = 'btn ' + (x === b ? 'btn-primary' : 'btn-light border'); }); desenhar(b.dataset.curva); }); });
+  document.querySelector('[data-bs-target="#crescimento"]').addEventListener('shown.bs.tab', function () { desenhar('peso'); });
+})();
+</script>
+{% endif %}
 {% if lab.linhas %}
 <script>
 (function () {

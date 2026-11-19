@@ -5,7 +5,7 @@
   <title>{% block titulo %}MedAccess{% endblock %} | {{ request.clinica.nome|default:"MedAccess" }}</title>
   {% block head %}{% endblock %}
 </head>
-<body>
+<body data-logado="1">
 <div class="app">
   <aside class="sidebar" aria-label="Menu principal">
     <a class="brand" href="{% url 'painel:dashboard' %}">
@@ -25,6 +25,7 @@
       <a class="item {% ativo '/agenda/dia' %}" href="{% url 'agenda:dia' %}"><i class="bi bi-list-check"></i>Agenda do dia / presença</a>
       <a class="item {% ativo '/agenda/espera' %}" href="{% url 'agenda:espera_list' %}"><i class="bi bi-hourglass-split"></i>Lista de espera</a>
       <a class="item {% ativo '/agenda/bloqueios' %}" href="{% url 'agenda:bloqueio_list' %}"><i class="bi bi-slash-circle"></i>Bloqueios de agenda</a>
+      <a class="item {% ativo '/agenda/recursos' %}" href="{% url 'agenda:recurso_list' %}"><i class="bi bi-door-open"></i>Salas e equipamentos</a>
       {% endif %}
       {% if perm|pode:'sessoes' %}
       <a class="item {% ativo '/agenda/pacotes' %}" href="{% url 'agenda:pacote_list' %}"><i class="bi bi-stack"></i>Pacotes de sessões</a>
@@ -33,10 +34,12 @@
       <a class="item {% ativo '/prontuario' %}" href="{% url 'prontuario:consulta' %}"><i class="bi bi-journal-medical"></i>{% if perm|edita:'prontuario' %}Prontuário eletrônico{% else %}Consultar prontuário{% endif %}</a>
       {% endif %}
       {% if perm|pode:'documentos' %}
+      {% if perm|edita:'documentos' %}<a class="item {% ativo '/documentos/assina' %}" href="{% url 'documentos:assinar' %}"><i class="bi bi-pen"></i>Assinar documento</a>{% endif %}
       <a class="item {% ativo '/documentos/documentos' %}" href="{% url 'documentos:documento_list' %}"><i class="bi bi-file-earmark-medical"></i>Prescrições e documentos</a>
       {% endif %}
       {% if perm|pode:'callcenter' %}
       <a class="item {% ativo '/callcenter' %}" href="{% url 'callcenter:fila' %}"><i class="bi bi-headset"></i>Call center</a>
+      <a class="item {% ativo '/notificacoes/conversas' %}" href="{% url 'notificacoes:conversas' %}"><i class="bi bi-chat-dots"></i>Conversas WhatsApp</a>
       {% endif %}
       {% if perm|edita:'callcenter' %}
       <a class="item {% ativo '/notificacoes/campanhas' %}" href="{% url 'notificacoes:campanhas' %}"><i class="bi bi-megaphone"></i>Campanhas</a>
@@ -55,6 +58,8 @@
       {% endif %}
       {% if perm|edita:'prontuario' %}
       <a class="item {% ativo '/prontuario/modelos' %}" href="{% url 'prontuario:modelo_list' %}"><i class="bi bi-ui-checks"></i>Modelos de prontuário</a>
+      <a class="item {% ativo '/prontuario/curvas' %}" href="{% url 'prontuario:importar_curvas' %}"><i class="bi bi-graph-up"></i>Curvas de crescimento</a>
+      <a class="item {% ativo '/prontuario/termos-modelos' %}" href="{% url 'prontuario:termo_modelo_list' %}"><i class="bi bi-file-earmark-check"></i>Termos de consentimento</a>
       <a class="item {% ativo '/prontuario/exames' %}" href="{% url 'prontuario:exame_list' %}"><i class="bi bi-droplet-half"></i>Catálogo de exames</a>
       {% endif %}
       {% if perm|pode:'cadastros' %}<a class="item {% ativo '/cadastros/interacoes' %}" href="{% url 'cadastros:interacao_list' %}"><i class="bi bi-exclamation-diamond"></i>Interações medicamentosas</a>{% endif %}
@@ -65,14 +70,25 @@
       {% if perm|pode:'financeiro' or perm|pode:'estoque' %}<div class="sec">Gestão</div>{% endif %}
       {% if perm|pode:'financeiro' %}
       <a class="item {% if request.path == '/financeiro/' or '/financeiro/lancamentos' in request.path %}active{% endif %}" href="{% url 'financeiro:lancamentos' %}"><i class="bi bi-cash-coin"></i>Contas a pagar / receber</a>
+      <a class="item {% ativo '/financeiro/caixa' %}" href="{% url 'financeiro:caixa' %}"><i class="bi bi-safe"></i>Caixa do dia</a>
+      <a class="item {% ativo '/financeiro/orcamentos' %}" href="{% url 'financeiro:orcamentos' %}"><i class="bi bi-file-earmark-ruled"></i>Orçamentos</a>
       <a class="item {% ativo '/financeiro/fluxo' %}" href="{% url 'financeiro:fluxo' %}"><i class="bi bi-graph-up-arrow"></i>Fluxo de caixa</a>
+      <a class="item {% ativo '/financeiro/dre' %}" href="{% url 'financeiro:dre' %}"><i class="bi bi-clipboard-data"></i>DRE (resultado)</a>
       <a class="item {% ativo '/financeiro/conciliacao' '/financeiro/contas' %}" href="{% url 'financeiro:conciliacao_inicio' %}"><i class="bi bi-check2-square"></i>Conciliação bancária</a>
       <a class="item {% ativo '/financeiro/categorias' %}" href="{% url 'financeiro:categoria_list' %}"><i class="bi bi-bookmarks"></i>Categorias financeiras</a>
+      {% endif %}
+      {% if perm|pode:'convenios' %}
+      <a class="item {% ativo '/convenios/guias' '/convenios/lotes' '/convenios/glosas' %}" href="{% url 'convenios:guias' %}"><i class="bi bi-file-earmark-medical"></i>Faturamento TISS</a>
+      <a class="item {% ativo '/convenios/operadoras' '/convenios/planos' '/convenios/precos' %}" href="{% url 'convenios:operadora_list' %}"><i class="bi bi-building-check"></i>Convênios</a>
       {% endif %}
       {% if perm|pode:'estoque' %}
       <a class="item {% ativo '/estoque/produtos' %}" href="{% url 'estoque:produto_list' %}"><i class="bi bi-box-seam"></i>Estoque</a>
       <a class="item {% ativo '/estoque/movimentos' %}" href="{% url 'estoque:movimento_list' %}"><i class="bi bi-arrow-left-right"></i>Movimentações</a>
       <a class="item {% ativo '/estoque/insumos' %}" href="{% url 'estoque:insumo_list' %}"><i class="bi bi-diagram-2"></i>Insumos por atendimento</a>
+      <a class="item {% ativo '/estoque/pedidos' %}" href="{% url 'estoque:pedidos' %}"><i class="bi bi-cart3"></i>Pedidos de compra</a>
+      <a class="item {% ativo '/estoque/fornecedores' %}" href="{% url 'estoque:fornecedor_list' %}"><i class="bi bi-truck"></i>Fornecedores</a>
+      <a class="item {% ativo '/estoque/inventarios' %}" href="{% url 'estoque:inventarios' %}"><i class="bi bi-clipboard-check"></i>Inventário</a>
+      <a class="item {% ativo '/estoque/lotes' %}" href="{% url 'estoque:lotes' %}"><i class="bi bi-hourglass-bottom"></i>Lotes a vencer</a>
       {% endif %}
       {% if perm|pode:'relatorios' %}
       <a class="item {% ativo '/relatorios' %}" href="{% url 'painel:relatorios' %}"><i class="bi bi-file-bar-graph"></i>Relatórios</a>
@@ -88,7 +104,9 @@
       {% if perm|edita:'administrativo' %}
       <a class="item {% ativo '/conta/configuracoes' %}" href="{% url 'contas:configuracoes' %}"><i class="bi bi-gear"></i>Configurações da clínica</a>
       {% endif %}
+      {% if perm|pode:'administrativo' %}<a class="item {% ativo '/assinatura/minha' %}" href="{% url 'assinaturas:minha' %}"><i class="bi bi-credit-card"></i>Minha assinatura</a>{% endif %}
       {% if user.is_superuser %}
+      <a class="item {% ativo '/assinatura/painel' %}" href="{% url 'assinaturas:painel' %}"><i class="bi bi-cash-stack"></i>Planos e faturas (SaaS)</a>
       <a class="item {% ativo '/conta/clinicas' %}" href="{% url 'contas:clinicas' %}"><i class="bi bi-buildings"></i>Clínicas (multi-clínica)</a>
       {% endif %}
     </nav>
@@ -150,6 +168,7 @@
           <ul class="dropdown-menu dropdown-menu-end">
             <li><h6 class="dropdown-header">{{ user.get_full_name|default:user.username }}<br><small>{{ request.vinculo.perfil|default:"Superusuário" }}</small></h6></li>
             <li><a class="dropdown-item" href="{% url 'contas:minha_conta' %}"><i class="bi bi-key me-2"></i>Alterar senha</a></li>
+            <li><button type="button" class="dropdown-item" id="btnNotificacoes" hidden><i class="bi bi-bell me-2"></i>Ativar notificações no aparelho</button></li>
             {% if user.is_superuser %}<li><a class="dropdown-item" href="/admin/"><i class="bi bi-tools me-2"></i>Admin Django</a></li>{% endif %}
             <li><hr class="dropdown-divider"></li>
             <li><form method="post" action="{% url 'contas:logout' %}">{% csrf_token %}

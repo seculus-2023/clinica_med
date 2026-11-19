@@ -3,13 +3,13 @@ from .models import MODULOS, Perfil
 PERFIS_PADRAO = {
     'Administrador': ({m: 'editar' for m, _ in MODULOS}, False, 'Acesso total à clínica'),
     'Recepção': ({'dashboard': 'ver', 'agenda': 'editar', 'cadastros': 'editar', 'sessoes': 'editar',
-                  'estoque': 'ver', 'financeiro': 'ver', 'prontuario': 'nenhum', 'documentos': 'ver', 'callcenter': 'editar',
+                  'estoque': 'ver', 'financeiro': 'ver', 'convenios': 'ver', 'prontuario': 'nenhum', 'documentos': 'ver', 'callcenter': 'editar',
                   'relatorios': 'ver', 'administrativo': 'nenhum'}, False, 'Agenda, cadastros e atendimento'),
     'Médico': ({'dashboard': 'ver', 'agenda': 'editar', 'cadastros': 'ver', 'sessoes': 'ver',
                 'estoque': 'ver', 'financeiro': 'nenhum', 'prontuario': 'ver', 'documentos': 'editar', 'callcenter': 'ver',
                 'relatorios': 'ver', 'administrativo': 'nenhum'}, True, 'Própria agenda, prescrições e documentos'),
     'Financeiro': ({'dashboard': 'ver', 'agenda': 'ver', 'cadastros': 'ver', 'sessoes': 'editar',
-                    'estoque': 'editar', 'financeiro': 'editar', 'prontuario': 'nenhum', 'documentos': 'nenhum', 'callcenter': 'ver',
+                    'estoque': 'editar', 'financeiro': 'editar', 'convenios': 'editar', 'prontuario': 'nenhum', 'documentos': 'nenhum', 'callcenter': 'ver',
                     'relatorios': 'ver', 'administrativo': 'nenhum'}, False, 'Financeiro, estoque e pacotes'),
     'Call center': ({'dashboard': 'ver', 'agenda': 'editar', 'cadastros': 'ver', 'sessoes': 'ver',
                      'estoque': 'nenhum', 'financeiro': 'nenhum', 'prontuario': 'nenhum', 'documentos': 'nenhum', 'callcenter': 'editar',
@@ -23,6 +23,8 @@ def preparar_clinica(clinica):
     perfis = criar_perfis_padrao(clinica)
     criar_modelos_padrao(clinica)
     criar_exames_padrao(clinica)
+    from prontuario.termos import criar_termos_padrao
+    criar_termos_padrao(clinica)
     return perfis
 
 

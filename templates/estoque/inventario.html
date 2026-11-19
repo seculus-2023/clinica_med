@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Inventário{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-clipboard-check"></i>Inventário de {{ inv.data|date:"d/m/Y" }}</h1><p>{{ inv.get_status_display }}{% if inv.observacoes %} · {{ inv.observacoes }}{% endif %}</p></div>
+  <div class="d-flex gap-2"><button class="btn btn-light border" onclick="print()"><i class="bi bi-printer"></i> Folha de contagem</button><a href="{% url 'estoque:inventarios' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i></a></div></div>
+<form method="post">{% csrf_token %}
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+  <thead><tr><th>Produto</th><th>Categoria</th><th class="num">Saldo no sistema</th><th style="width: 150px;">Contado</th><th class="num">Diferença</th></tr></thead>
+  <tbody>{% for it in itens %}<tr><td>{{ it.produto.nome }} <span class="text-muted small">{{ it.produto.unidade }}</span></td><td class="small">{{ it.produto.get_categoria_display }}</td><td class="num">{{ it.saldo_sistema }}</td>
+    <td>{% if inv.status == 'aberto' and pode_editar %}<input name="c_{{ it.pk }}" value="{% if it.contado is not None %}{{ it.contado }}{% endif %}" class="form-control form-control-sm" inputmode="decimal">{% else %}{{ it.contado|default_if_none:"-" }}{% endif %}</td>
+    <td class="num {% if it.diferenca %}{% if it.diferenca > 0 %}text-success{% else %}text-danger{% endif %} fw-semibold{% endif %}">{% if it.diferenca is not None %}{{ it.diferenca }}{% else %}-{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5"><div class="vazio">Sem produtos ativos.</div></td></tr>{% endfor %}</tbody></table></div>
+  {% if inv.status == 'aberto' and pode_editar %}<div class="card-footer bg-transparent d-flex justify-content-end gap-2"><button class="btn btn-outline-primary">Salvar contagem</button>
+    <button name="concluir" value="1" class="btn btn-success" onclick="return confirm('Concluir o inventário e lançar os ajustes das diferenças?')"><i class="bi bi-check2-all"></i> Concluir e ajustar estoque</button></div>{% endif %}
+</div></form>
+{% endblock %}

@@ -35,12 +35,14 @@
     <div class="card-body">
       <div class="alert alert-light border small py-2">Link público de agendamento (divulgue no site, Instagram e WhatsApp):<br>
         <a href="{{ link_online }}" target="_blank" class="fw-semibold text-break">{{ link_online }}</a></div>
+      <div class="alert alert-light border small py-2">Portal do paciente (receitas, atestados, exames, recibos):<br>
+        <a href="{{ link_portal }}" target="_blank" class="fw-semibold text-break">{{ link_portal }}</a> — use <code>{link_portal}</code> nas mensagens.</div>
       <div class="row g-3">{% for f in form.grupo_online %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endfor %}</div>
     </div></div>
 
   <div class="card mb-3"><div class="card-header"><i class="bi bi-chat-text me-1"></i>Modelos de mensagens</div>
     <div class="card-body">
-      <p class="small text-muted mb-2">Variáveis: <code>{paciente}</code> <code>{paciente_completo}</code> <code>{data}</code> <code>{hora}</code> <code>{medico}</code> <code>{tipo}</code> <code>{clinica}</code> <code>{link_confirmacao}</code> <code>{link_checkin}</code> <code>{link_avaliacao}</code> <code>{link_teleconsulta}</code> <code>{telefone_clinica}</code> <code>{whatsapp_clinica}</code> <code>{endereco}</code></p>
+      <p class="small text-muted mb-2">Variáveis: <code>{paciente}</code> <code>{paciente_completo}</code> <code>{data}</code> <code>{hora}</code> <code>{medico}</code> <code>{tipo}</code> <code>{clinica}</code> <code>{link_confirmacao}</code> <code>{link_checkin}</code> <code>{link_avaliacao}</code> <code>{link_teleconsulta}</code> <code>{link_portal}</code> <code>{telefone_clinica}</code> <code>{whatsapp_clinica}</code> <code>{endereco}</code></p>
       <div class="row g-3">
       {% for f in form.grupo_mensagens %}{% include "_campo.html" with col="col-md-6" %}{% endfor %}
       </div>

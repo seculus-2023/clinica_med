@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Caixa do dia{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-safe"></i>Caixa do dia</h1><p>Abra o caixa no início do expediente: os recebimentos que você baixar entram nele. No fim, conte o dinheiro e feche.</p></div>
+  <a href="{% url 'financeiro:lancamentos' %}?status=pendente&tipo=receita" class="btn btn-light border"><i class="bi bi-cash-coin"></i> Receber pagamentos</a></div>
+{% if not atual %}
+<form method="post" class="card mb-3" style="max-width: 520px;">{% csrf_token %}<input type="hidden" name="acao" value="abrir">
+  <div class="card-header"><i class="bi bi-unlock"></i> Abrir caixa — {{ user.get_full_name|default:user.username }}</div>
+  <div class="card-body"><div class="row g-2 align-items-end">{% include "_campo.html" with f=abrir.valor_abertura col="col-7" %}
+    <div class="col-5"><button class="btn btn-primary w-100"><i class="bi bi-unlock"></i> Abrir caixa</button></div></div></div></form>
+{% else %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-clock"></i></div><div><div class="v">{{ atual.aberto_em|date:"H:i" }}</div><div class="l">Aberto em {{ atual.aberto_em|date:"d/m/Y" }}</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-coin"></i></div><div><div class="v">{{ atual.valor_abertura|moeda }}</div><div class="l">Troco inicial</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-cash-stack"></i></div><div><div class="v">{{ r.total|moeda }}</div><div class="l">Movimentado ({{ r.qtd }})</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-wallet2"></i></div><div><div class="v">{{ r.dinheiro_esperado|moeda }}</div><div class="l">Dinheiro esperado na gaveta</div></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-header">Movimentos do caixa</div><div class="table-responsive"><table class="table table-sm mb-0">
+    <tbody>{% for l in movs %}<tr><td>{{ l.data_pagamento|date:"d/m" }}</td><td>{{ l.descricao|truncatechars:40 }}</td><td class="small">{{ l.get_forma_pagamento_display|default:"-" }}</td>
+      <td class="num {% if l.tipo == 'despesa' %}text-danger{% endif %}">{% if l.tipo == 'despesa' %}-{% endif %}{{ l.valor_pago|default:l.valor|moeda }}</td>
+      <td class="text-end">{% if l.tipo == 'receita' %}<a href="{% url 'financeiro:recibo' l.pk %}" target="_blank" class="btn btn-sm btn-light" title="Recibo"><i class="bi bi-receipt"></i></a>{% endif %}</td></tr>
+    {% empty %}<tr><td class="text-muted small p-3">Nenhuma baixa neste caixa ainda.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">Por forma de pagamento</div><ul class="list-group list-group-flush">{% for f, v in r.por_forma %}<li class="list-group-item d-flex justify-content-between"><span>{{ f }}</span><b>{{ v|moeda }}</b></li>{% empty %}<li class="list-group-item small text-muted">-</li>{% endfor %}</ul></div>
+    <form method="post" class="card" data-confirm="Fechar o caixa?">{% csrf_token %}<input type="hidden" name="acao" value="fechar">
+      <div class="card-header"><i class="bi bi-lock"></i> Fechar caixa</div><div class="card-body row g-2">
+        {% include "_campo.html" with f=fechar.valor_informado col="col-12" %}{% include "_campo.html" with f=fechar.observacoes col="col-12" %}
+        <div class="col-12 text-end"><button class="btn btn-dark"><i class="bi bi-lock"></i> Fechar caixa</button></div></div></form>
+  </div>
+</div>
+{% endif %}
+<div class="card mt-3"><div class="card-header">Caixas anteriores</div><div class="table-responsive"><table class="table table-sm table-hover mb-0">
+  <thead><tr><th>Abertura</th><th>Fechamento</th><th>Usuário</th><th></th></tr></thead>
+  <tbody>{% for c in historico %}<tr><td>{{ c.aberto_em|date:"d/m/Y H:i" }}</td><td>{{ c.fechado_em|date:"d/m/Y H:i"|default:"aberto" }}</td><td>{{ c.usuario }}</td>
+    <td class="text-end"><a href="{% url 'financeiro:caixa_detalhe' c.pk %}" class="btn btn-sm btn-light"><i class="bi bi-eye"></i></a></td></tr>{% empty %}<tr><td class="small text-muted p-3">-</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

@@ -4,7 +4,7 @@
 {% block conteudo %}
 <div class="page-head">
   <div><h1><i class="bi bi-cash-coin"></i>Contas a pagar e a receber</h1><p>Período de {{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }} (por vencimento).</p></div>
-  {% if pode_editar %}<div class="d-flex gap-2"><a href="{% url 'financeiro:lancamento_novo' %}?tipo=receita" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Receita</a>
+  {% if pode_editar %}<div class="d-flex gap-2 flex-wrap"><a href="{% url 'financeiro:caixa' %}" class="btn btn-outline-primary"><i class="bi bi-safe"></i> Caixa</a><a href="{% url 'financeiro:lancamento_novo' %}?tipo=receita" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Receita</a>
     <a href="{% url 'financeiro:lancamento_novo' %}?tipo=despesa" class="btn btn-outline-danger"><i class="bi bi-dash-lg"></i> Despesa</a></div>{% endif %}
 </div>
 <div class="row g-3 mb-3">
@@ -38,6 +38,7 @@
           <select name="forma" class="form-select form-select-sm" style="width: 120px;" aria-label="Forma de pagamento">{% for v, r in formas %}<option value="{{ v }}" {% if v == l.forma_pagamento %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
           <button class="btn btn-sm btn-success" title="Baixar como pago"><i class="bi bi-check2"></i></button></form>
         {% elif l.status == 'pago' %}
+        {% if l.tipo == 'receita' %}<a href="{% url 'financeiro:recibo' l.pk %}" target="_blank" class="btn btn-sm btn-light" title="Recibo"><i class="bi bi-receipt"></i></a>{% endif %}
         <form method="post" action="{% url 'financeiro:baixar' l.pk %}" class="d-inline" data-confirm="Estornar a baixa?">{% csrf_token %}<input type="hidden" name="estornar" value="1"><input type="hidden" name="next" value="{{ request.get_full_path }}">
           <button class="btn btn-sm btn-light" title="Estornar"><i class="bi bi-arrow-counterclockwise"></i></button></form>
         {% endif %}{% endif %}</td></tr>

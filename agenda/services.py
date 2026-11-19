@@ -63,6 +63,8 @@ def apos_salvar_agendamento(sender, instance, created, **kwargs):
             if ag.status == 'concluido':
                 criar_contato_pos_consulta(ag)
                 criar_contato_retorno(ag)
+                from convenios.services import criar_guia
+                criar_guia(ag)
                 baixar_insumos(ag)
                 if ag.clinica.enviar_nps and ag.notificar:
                     notificar_agendamento(ag, 'nps')

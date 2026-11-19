@@ -1,5 +1,5 @@
 @echo off
-title MedAccess - Django (atras do Caddy/HTTPS)
+title MedAccess - Django + PostgreSQL (atras do Caddy/HTTPS)
 REM Copie o projeto para C:\webapps\clinica no servidor e crie o venv:
 REM   python -m venv venv  &&  venv\Scripts\pip install -r requirements.txt
 REM Use o .env.producao.example como base do .env do servidor.
@@ -12,6 +12,13 @@ if not exist "venv\Scripts\python.exe" (
     exit /b 1
 )
 
+echo Verificando o PostgreSQL...
+"venv\Scripts\python.exe" manage.py verificar_banco
+if errorlevel 1 (
+    echo ERRO: sem conexao com o PostgreSQL. Confira o .env do servidor.
+    pause
+    exit /b 1
+)
 "venv\Scripts\python.exe" manage.py migrate --noinput
 "venv\Scripts\python.exe" manage.py collectstatic --noinput >nul
 

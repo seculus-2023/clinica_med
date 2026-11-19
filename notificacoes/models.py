@@ -47,3 +47,25 @@ class Campanha(ClinicaModel):
 
     def __str__(self):
         return self.nome
+
+
+class MensagemRecebida(ClinicaModel):
+    """Mensagem recebida do paciente pelo WhatsApp (webhook do provedor)."""
+    telefone = models.CharField(max_length=20, db_index=True)
+    nome_contato = models.CharField(max_length=150, blank=True)
+    paciente = models.ForeignKey('cadastros.Paciente', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='mensagens_whatsapp')
+    texto = models.TextField()
+    id_externo = models.CharField(max_length=120, blank=True, db_index=True)
+    acao = models.CharField('Ação automática', max_length=30, blank=True)
+    agendamento = models.ForeignKey('agenda.Agendamento', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    lida = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-criado_em']
+        verbose_name = 'Mensagem recebida (WhatsApp)'
+        verbose_name_plural = 'Mensagens recebidas (WhatsApp)'
+
+    def __str__(self):
+        return f'{self.telefone}: {self.texto[:40]}'

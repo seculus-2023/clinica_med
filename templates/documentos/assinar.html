@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block titulo %}Assinar documento{% endblock %}
+{% block head %}
+<style>
+  .pdfSign-upload { display: flex; align-items: center; gap: .75rem; padding: 1rem; background: #f4f8fb; border: 2px dashed #aac4d8; border-radius: 12px; cursor: pointer; }
+  .pdfSign-upload:hover { border-color: var(--ma-primary); }
+  .pdfSign-upload input { display: none; }
+  .pdfSign-canvas-wrap { position: relative; border: 1px solid var(--ma-border); border-radius: 10px; overflow: hidden; background: #fff; }
+  .pdfSign-pdf { display: block; width: 100%; height: auto; }
+  .pdfSign-over { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .pdfSign-img-preview { max-height: 90px; max-width: 260px; border: 1px solid var(--ma-border); border-radius: 6px; background: #fff; padding: 4px; }
+  #pdfStatus { display: none; }
+</style>
+{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-pen"></i>Assinar documento</h1>
+    <p>Posicione a sua assinatura em um PDF ou imagem e gere o documento certificado, com código de verificação.</p></div>
+  <a href="{% url 'documentos:assinados' %}" class="btn btn-light border"><i class="bi bi-folder2-open"></i> Documentos assinados</a>
+</div>
+
+{% if not med %}
+  <div class="alert alert-warning">{{ erro }}
+    {% if perm.cadastros == 'editar' %}<a href="{% url 'cadastros:medico_list' %}">Ir para o cadastro de médicos</a>.{% endif %}</div>
+{% else %}
+<div class="alert alert-light border small py-2"><i class="bi bi-info-circle"></i>
+  Assinatura <b>eletrônica simples</b> (Lei 14.063/2020): imagem da sua assinatura + código de verificação conferível em
+  <span class="text-break">{{ url_verificacao }}</span>. Receitas de controle especial e documentos que exigem assinatura
+  qualificada precisam de certificado <b>ICP-Brasil</b>.</div>
+
+<div class="row g-3">
+  <div class="col-xl-4">
+    <div class="card mb-3"><div class="card-body">
+      <label class="pdfSign-upload mb-3" for="pdfDocInput">
+        <input type="file" id="pdfDocInput" accept=".pdf,image/*">
+        <i class="bi bi-file-earmark-arrow-up fs-3 text-primary"></i>
+        <span><b class="text-primary">Escolher documento</b><br><small class="text-muted" id="nomeDocumento">PDF ou imagem</small></span>
+      </label>
+
+      <div class="small text-muted mb-1">Sua assinatura cadastrada</div>
+      <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
+        <img id="imgAssinatura" class="pdfSign-img-preview" src="{% url 'documentos:medico_assinatura' med.pk %}" alt="Assinatura de {{ med.nome }}">
+        <button class="btn btn-success" id="btnUsarAssinatura" type="button" disabled><i class="bi bi-plus-circle"></i> Usar assinatura</button>
+      </div>
+      <div class="small text-muted mb-3">Assinando como <b>{{ med.nome }}</b>{% if med.registro_completo %} — {{ med.registro_completo }}{% endif %}{% if med.cpf %} — CPF {{ med.cpf }}{% endif %}</div>
+
+      <div class="mb-2">
+        <label class="form-label">Paciente (opcional)</label>
+        <div class="autocomplete position-relative" data-autocomplete="{% url 'cadastros:api_pacientes' %}" data-modo="id">
+          <input type="hidden" id="pacienteId" data-ac-valor value="{{ paciente_ini.pk|default:'' }}">
+          <input type="text" class="form-control" placeholder="Buscar paciente..." autocomplete="off" data-ac-texto value="{{ paciente_ini.nome|default:'' }}">
+          <div class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1060; max-height: 260px; overflow-y: auto;" data-ac-lista></div>
+        </div>
+      </div>
+      {% if perm.prontuario == 'editar' %}
+      <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="optAnexar" checked><label class="form-check-label small" for="optAnexar">Anexar ao prontuário do paciente</label></div>
+      {% endif %}
+      <hr>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="optTodas" checked><label class="form-check-label small" for="optTodas">Repetir a assinatura em todas as páginas</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="optLateral" checked><label class="form-check-label small" for="optLateral">Certificação na margem lateral</label></div>
+      <div class="d-flex align-items-center gap-2 mt-1 ms-4 small"><span>Lado:</span>
+        <select id="optLado" class="form-select form-select-sm" style="width: auto;"><option value="D">Direito</option><option value="E">Esquerdo</option></select></div>
+    </div></div>
+  </div>
+
+  <div class="col-xl-8">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2" id="docToolbar" style="display: none !important;">
+      <button class="btn btn-sm btn-light border" id="btnAnterior" type="button"><i class="bi bi-chevron-left"></i> Anterior</button>
+      <span class="small text-muted" id="docPaginas">Pág 1 / 1</span>
+      <button class="btn btn-sm btn-light border" id="btnProximo" type="button">Próxima <i class="bi bi-chevron-right"></i></button>
+      <span class="vr mx-1"></span>
+      <button class="btn btn-sm btn-outline-danger" id="btnLimparDoc" type="button"><i class="bi bi-eraser"></i> Limpar assinaturas</button>
+      <button class="btn btn-sm btn-primary" id="btnGerar" type="button"><i class="bi bi-patch-check"></i> Gerar PDF assinado</button>
+      <button class="btn btn-sm btn-outline-primary" id="btnBaixar" type="button" style="display: none;"><i class="bi bi-download"></i> Baixar</button>
+      <button class="btn btn-sm btn-success" id="btnGravar" type="button" style="display: none;"><i class="bi bi-database-check"></i> Gravar no sistema</button>
+    </div>
+    <div class="pdfSign-canvas-wrap" id="docWrap" style="display: none;">
+      <canvas id="docCanvas" class="pdfSign-pdf"></canvas>
+      <canvas id="overCanvas" class="pdfSign-over"></canvas>
+    </div>
+    <div class="vazio card" id="docVazio"><i class="bi bi-file-earmark-pdf"></i>Escolha um documento para começar.<br><small>Depois clique em "Usar assinatura", arraste para posicionar e redimensione pelo canto azul.</small></div>
+    <div class="alert mt-2 small" id="pdfStatus"></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if med %}
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var pdfDocInput = $('pdfDocInput'), nomeDocumento = $('nomeDocumento'), docToolbar = $('docToolbar'),
+      docWrap = $('docWrap'), docVazio = $('docVazio'), docCanvas = $('docCanvas'), overCanvas = $('overCanvas'),
+      docPaginas = $('docPaginas'), btnAnterior = $('btnAnterior'), btnProximo = $('btnProximo'),
+      btnLimparDoc = $('btnLimparDoc'), btnGerar = $('btnGerar'), btnBaixar = $('btnBaixar'), btnGravar = $('btnGravar'),
+      pdfStatus = $('pdfStatus'), imgAssinatura = $('imgAssinatura'), btnUsarAssinatura = $('btnUsarAssinatura');
+  var ctxDoc = docCanvas.getContext('2d'), ctxOver = overCanvas.getContext('2d');
+  var CSRF = '{{ csrf_token }}';
+  var ESCALA_RENDER = 1.5;   /* mesma escala na tela e na exportação */
+
+  var pdfDoc = null, arquivoOriginal = null, nomeArquivo = 'documento', paginaAtual = 1, totalPaginas = 1;
+  var paginasStamp = {}, paginasDim = {}, stamps = [];
+  var signImg = null;                      /* imagem pré-carregada da assinatura (desenho síncrono, sem piscar) */
+  var acao = null, alvo = -1, dragOff = { x: 0, y: 0 };
+  var gerado = null;                       /* { blob, codigo, paginas, sha256Original } */
+
+  function setStatus(msg, tipo) {
+    var cls = { ok: 'alert-success', error: 'alert-danger', loading: 'alert-info' }[tipo] || 'alert-secondary';
+    pdfStatus.className = 'alert mt-2 small ' + cls; pdfStatus.textContent = msg; pdfStatus.style.display = 'block';
+  }
+  function carregarScript(src, teste, cb) {
+    if (teste()) { cb(); return; }
+    var s = document.createElement('script'); s.src = src; s.onload = cb;
+    s.onerror = function () { setStatus('Não foi possível carregar a biblioteca (verifique a internet).', 'error'); };
+    document.head.appendChild(s);
+  }
+  function carregarPdfJs(cb) {
+    carregarScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', function () { return !!window.pdfjsLib; }, function () {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; cb();
+    });
+  }
+  function carregarJsPdf(cb) {
+    carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', function () { return !!(window.jspdf && window.jspdf.jsPDF); }, cb);
+  }
+  function invalidarGerado() { gerado = null; btnBaixar.style.display = 'none'; btnGravar.style.display = 'none'; }
+
+  /* ══════════ assinatura do cadastro (somente a do médico logado) ══════════ */
+  (function () {
+    var img = new Image();
+    img.onload = function () { signImg = img; btnUsarAssinatura.disabled = false; };
+    img.onerror = function () { setStatus('Não foi possível carregar a sua assinatura do cadastro.', 'error'); };
+    img.src = imgAssinatura.src;
+  })();
+  btnUsarAssinatura.onclick = function () {
+    if (!docCanvas.width || docWrap.style.display === 'none') { setStatus('Escolha o documento primeiro.', 'error'); return; }
+    var sx = docCanvas.width / docCanvas.offsetWidth, sy = docCanvas.height / docCanvas.offsetHeight;
+    var w = 200 * sx, h = w * (signImg.height / signImg.width || 0.4);
+    stamps.push({ x: 40 * sx, y: docCanvas.height - h - 60 * sy, w: w, h: h });
+    invalidarGerado(); renderStamps();
+    setStatus('Assinatura adicionada. Arraste para posicionar; use o canto azul para redimensionar e o X para remover.', 'ok');
+  };
+
+  /* ══════════ documento ══════════ */
+  pdfDocInput.onchange = function (e) {
+    var file = e.target.files[0]; if (!file) return;
+    nomeArquivo = file.name; nomeDocumento.textContent = file.name; invalidarGerado();
+    setStatus('Carregando...', 'loading');
+    var reader = new FileReader();
+    if (file.type === 'application/pdf') {
+      reader.onload = function (ev) { arquivoOriginal = ev.target.result.slice(0); carregarPdf(ev.target.result); };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = function (ev) { arquivoOriginal = ev.target.result; carregarImagem(ev.target.result); };
+      reader.readAsDataURL(file);
+    }
+  };
+  function mostrarDocUI() { docToolbar.style.setProperty('display', 'flex', 'important'); docWrap.style.display = 'block'; docVazio.style.display = 'none'; }
+  function carregarPdf(buf) {
+    carregarPdfJs(function () {
+      pdfjsLib.getDocument({ data: buf }).promise.then(function (doc) {
+        pdfDoc = doc; totalPaginas = doc.numPages; paginasStamp = {}; paginasDim = {}; stamps = []; paginaAtual = 1;
+        mostrarDocUI(); renderizarPagina(1, true);
+        setStatus('PDF carregado com ' + totalPaginas + ' página(s).', 'ok');
+      }).catch(function () { setStatus('Erro ao carregar o PDF (arquivo protegido ou corrompido?).', 'error'); });
+    });
+  }
+  function carregarImagem(src) {
+    var img = new Image();
+    img.onload = function () {
+      pdfDoc = null; totalPaginas = 1; paginaAtual = 1; paginasStamp = {}; stamps = [];
+      docCanvas.width = img.width; docCanvas.height = img.height;
+      paginasDim = { 1: { w: img.width, h: img.height } };
+      ctxDoc.drawImage(img, 0, 0);
+      sincronizarOver(); renderStamps(); atualizarNavegacao(); mostrarDocUI();
+      setStatus('Imagem carregada.', 'ok');
+    };
+    img.src = src;
+  }
+  function renderizarPagina(num, inicial) {
+    if (!inicial) paginasStamp[paginaAtual] = stamps.slice();
+    paginaAtual = num;
+    pdfDoc.getPage(num).then(function (page) {
+      var vp = page.getViewport({ scale: ESCALA_RENDER });
+      docCanvas.width = vp.width; docCanvas.height = vp.height;
+      paginasDim[num] = { w: vp.width, h: vp.height };
+      page.render({ canvasContext: ctxDoc, viewport: vp }).promise.then(function () {
+        sincronizarOver();
+        stamps = paginasStamp[num] ? paginasStamp[num].slice() : [];
+        renderStamps(); atualizarNavegacao();
+      });
+    });
+  }
+  function atualizarNavegacao() {
+    docPaginas.textContent = 'Pág ' + paginaAtual + ' / ' + totalPaginas;
+    btnAnterior.disabled = paginaAtual <= 1; btnProximo.disabled = paginaAtual >= totalPaginas;
+  }
+  btnAnterior.onclick = function () { if (paginaAtual > 1) renderizarPagina(paginaAtual - 1); };
+  btnProximo.onclick = function () { if (paginaAtual < totalPaginas) renderizarPagina(paginaAtual + 1); };
+
+  /* ══════════ carimbos ══════════ */
+  function sincronizarOver() { overCanvas.width = docCanvas.width; overCanvas.height = docCanvas.height; }
+  function renderStamps() {
+    ctxOver.clearRect(0, 0, overCanvas.width, overCanvas.height);
+    if (!signImg) return;
+    var k = overCanvas.width / (overCanvas.offsetWidth || overCanvas.width);   /* tamanho das alças em px de tela */
+    stamps.forEach(function (s) {
+      ctxOver.drawImage(signImg, s.x, s.y, s.w, s.h);
+      ctxOver.strokeStyle = '#139e86'; ctxOver.lineWidth = 1.5 * k; ctxOver.setLineDash([4 * k, 3 * k]);
+      ctxOver.strokeRect(s.x, s.y, s.w, s.h); ctxOver.setLineDash([]);
+      ctxOver.fillStyle = '#0ea5e9'; ctxOver.fillRect(s.x + s.w - 9 * k, s.y + s.h - 9 * k, 11 * k, 11 * k);
+      ctxOver.fillStyle = '#dc2626'; ctxOver.beginPath(); ctxOver.arc(s.x + s.w, s.y, 9 * k, 0, Math.PI * 2); ctxOver.fill();
+      ctxOver.fillStyle = '#fff'; ctxOver.font = 'bold ' + Math.round(11 * k) + 'px sans-serif'; ctxOver.textAlign = 'center';
+      ctxOver.textBaseline = 'middle'; ctxOver.fillText('×', s.x + s.w, s.y);
+    });
+  }
+  function ponto(e) {
+    var r = overCanvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * overCanvas.width / r.width, y: (e.clientY - r.top) * overCanvas.height / r.height,
+             k: overCanvas.width / r.width };
+  }
+  overCanvas.addEventListener('pointerdown', function (e) {
+    var p = ponto(e), tol = 12 * p.k;
+    for (var i = stamps.length - 1; i >= 0; i--) {
+      var s = stamps[i];
+      if (Math.hypot(p.x - (s.x + s.w), p.y - s.y) < tol) { stamps.splice(i, 1); invalidarGerado(); renderStamps(); return; }
+      if (p.x >= s.x + s.w - tol && p.x <= s.x + s.w + 4 * p.k && p.y >= s.y + s.h - tol && p.y <= s.y + s.h + 4 * p.k) {
+        acao = 'resize'; alvo = i; dragOff = { x: p.x, y: p.y }; overCanvas.setPointerCapture(e.pointerId); return;
+      }
+      if (p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h) {
+        acao = 'drag'; alvo = i; dragOff = { x: p.x - s.x, y: p.y - s.y }; overCanvas.setPointerCapture(e.pointerId); return;
+      }
+    }
+  });
+  overCanvas.addEventListener('pointermove', function (e) {
+    if (!acao) return;
+    var p = ponto(e), s = stamps[alvo];
+    if (acao === 'drag') { s.x = p.x - dragOff.x; s.y = p.y - dragOff.y; }
+    else {
+      var prop = signImg.height / signImg.width || 0.4;
+      s.w = Math.max(40, s.w + (p.x - dragOff.x)); s.h = e.shiftKey ? Math.max(20, s.h + (p.y - dragOff.y)) : s.w * prop;
+      dragOff = { x: p.x, y: p.y };
+    }
+    invalidarGerado(); renderStamps();
+  });
+  function soltar() { acao = null; alvo = -1; }
+  overCanvas.addEventListener('pointerup', soltar);
+  overCanvas.addEventListener('pointercancel', soltar);
+  window.addEventListener('resize', renderStamps);
+
+  btnLimparDoc.onclick = function () { stamps = []; paginasStamp = {}; invalidarGerado(); renderStamps(); setStatus('Assinaturas removidas.', 'ok'); };
+
+  /* ══════════ certificação ══════════ */
+  function sha256Hex(dados) {
+    if (!(window.crypto && crypto.subtle)) return Promise.resolve('');
+    return crypto.subtle.digest('SHA-256', dados).then(function (h) {
+      return Array.prototype.map.call(new Uint8Array(h), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    });
+  }
+  function bytesOriginal() {
+    if (arquivoOriginal instanceof ArrayBuffer) return arquivoOriginal;
+    return new TextEncoder().encode(String(arquivoOriginal || ''));
+  }
+  function renderizarPaginaFinal(num) {
+    if (!pdfDoc) {
+      var fc = document.createElement('canvas'); fc.width = docCanvas.width; fc.height = docCanvas.height;
+      fc.getContext('2d').drawImage(docCanvas, 0, 0);
+      return Promise.resolve({ canvas: fc, wPt: fc.width * 0.75, hPt: fc.height * 0.75 });   /* 96 px/pol -> pontos */
+    }
+    return pdfDoc.getPage(num).then(function (page) {
+      var vp = page.getViewport({ scale: ESCALA_RENDER }), vp1 = page.getViewport({ scale: 1 });
+      var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise
+        .then(function () { return { canvas: c, wPt: vp1.width, hPt: vp1.height }; });
+    });
+  }
+  function desenharBlocosTexto(canvas, s, cert) {
+    var ctx = canvas.getContext('2d');
+    var fontSize = Math.max(11, Math.round(canvas.width * 0.012)), lh = fontSize + 4, gap = Math.max(10, Math.round(canvas.width * 0.01));
+    var linhas = [cert.nome];
+    if (cert.registro) linhas.push(cert.registro);
+    if (cert.cpf) linhas.push('CPF: ' + cert.cpf);
+    linhas.push(cert.data + '  ' + cert.hora);
+    ctx.save(); ctx.font = 'bold ' + fontSize + 'px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var maxW = Math.max.apply(null, linhas.map(function (l) { return ctx.measureText(l).width; })), blocoH = linhas.length * lh;
+    s.forEach(function (st) {
+      var tx = st.x + st.w + gap;
+      if (tx + maxW + 8 > canvas.width) tx = Math.max(8, st.x - gap - maxW);   /* sem espaço à direita: vai à esquerda */
+      var topo = st.y + st.h / 2 - blocoH / 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(tx - 4, topo - 3, maxW + 8, blocoH + 6);
+      ctx.fillStyle = '#1a1a1a';
+      linhas.forEach(function (l, j) { ctx.fillText(l, tx + maxW / 2, topo + lh * (j + 0.5)); });
+    });
+    ctx.restore();
+  }
+  function desenharFaixaLateral(canvas, pagina, total, cert) {
+    var ctx = canvas.getContext('2d'), esq = $('optLado').value === 'E';
+    var faixaW = Math.max(22, Math.round(canvas.width * 0.03)), margem = Math.round(faixaW * 0.35);
+    var topo = canvas.height * 0.02, altura = canvas.height * 0.96;
+    var l1 = 'Documento assinado eletronicamente por ' + cert.nome + (cert.registro ? ' (' + cert.registro + ')' : '') +
+             (cert.cpf ? ' - CPF ' + cert.cpf : '') + ' em ' + cert.data + ' às ' + cert.hora + ' (Lei 14.063/2020).';
+    var l2 = 'Código de verificação: ' + cert.codigo + ' - Verifique em ' + cert.url + ' - Página ' + pagina + ' de ' + total + '.';
+    var fs = Math.max(7, Math.floor((faixaW - 6) / 2.4));
+    ctx.save(); ctx.font = fs + 'px Arial, sans-serif';
+    var maior = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width), limite = altura - 12;
+    if (maior > limite) fs = Math.max(6, Math.floor(fs * limite / maior));
+    var x = esq ? margem : canvas.width - margem - faixaW;
+    ctx.translate(x + faixaW / 2, topo + altura / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#1a1a1a'; ctx.font = fs + 'px Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    var lh = fs + 2; ctx.fillText(l1, 0, -lh / 2); ctx.fillText(l2, 0, lh / 2);
+    ctx.restore();
+  }
+
+  /* ══════════ gerar ══════════ */
+  btnGerar.onclick = function () {
+    if (!docCanvas.width || docWrap.style.display === 'none') { setStatus('Carregue um documento primeiro.', 'error'); return; }
+    paginasStamp[paginaAtual] = stamps.slice();
+    var replicar = $('optTodas').checked, certificar = $('optLateral').checked;
+    var modelo = null;
+    if (paginasStamp[paginaAtual] && paginasStamp[paginaAtual].length) modelo = paginaAtual;
+    else for (var pg = 1; pg <= totalPaginas; pg++) if (paginasStamp[pg] && paginasStamp[pg].length) { modelo = pg; break; }
+    if (modelo === null) { setStatus('Posicione a assinatura no documento antes de gerar.', 'error'); return; }
+    var modeloStamps = paginasStamp[modelo], modeloDim = paginasDim[modelo] || { w: docCanvas.width, h: docCanvas.height };
+    function stampsDaPagina(num, c) {
+      if (paginasStamp[num] && paginasStamp[num].length) return paginasStamp[num];
+      if (!replicar) return [];
+      var fx = c.width / modeloDim.w, fy = c.height / modeloDim.h;
+      return modeloStamps.map(function (st) { return { x: st.x * fx, y: st.y * fy, w: st.w * fx, h: st.h * fy }; });
+    }
+    btnGerar.disabled = true; invalidarGerado();
+    setStatus('Emitindo código de verificação...', 'loading');
+    var fd = new FormData(); fd.append('csrfmiddlewaretoken', CSRF);
+    Promise.all([
+      fetch('{% url "documentos:assinar_iniciar" %}', { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+      sha256Hex(bytesOriginal()),
+      new Promise(function (res) { carregarJsPdf(res); })
+    ]).then(function (r) {
+      var cert = r[0], shaOrig = r[1];
+      if (!cert.ok) throw new Error(cert.erro || 'Falha ao emitir o código.');
+      setStatus('Gerando documento certificado (' + totalPaginas + ' página(s))...', 'loading');
+      var JsPDF = window.jspdf.jsPDF, pdf = null, cadeia = Promise.resolve();
+      for (var n = 1; n <= totalPaginas; n++) {
+        (function (num) {
+          cadeia = cadeia.then(function () { return renderizarPaginaFinal(num); }).then(function (pg) {
+            var c = pg.canvas, ctx = c.getContext('2d'), s = stampsDaPagina(num, c);
+            s.forEach(function (st) { ctx.drawImage(signImg, st.x, st.y, st.w, st.h); });
+            if (s.length) desenharBlocosTexto(c, s, cert);
+            if (certificar) desenharFaixaLateral(c, num, totalPaginas, cert);
+            var orient = pg.wPt > pg.hPt ? 'landscape' : 'portrait';
+            if (!pdf) pdf = new JsPDF({ orientation: orient, unit: 'pt', format: [pg.wPt, pg.hPt], compress: true });
+            else pdf.addPage([pg.wPt, pg.hPt], orient);
+            pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pg.wPt, pg.hPt);
+          });
+        })(n);
+      }
+      return cadeia.then(function () {
+        pdf.setProperties({ title: nomeArquivo + ' (assinado)', author: cert.nome, subject: 'Código de verificação ' + cert.codigo, creator: 'MedAccess' });
+        gerado = { blob: pdf.output('blob'), codigo: cert.codigo, paginas: totalPaginas, sha256Original: shaOrig, data: cert.data, hora: cert.hora };
+        btnBaixar.style.display = 'inline-block'; btnGravar.style.display = 'inline-block';
+        setStatus('Documento gerado — código ' + cert.codigo + '. Clique em "Gravar no sistema" para validar o código (expira em 30 min) e depois baixe.', 'ok');
+      });
+    }).catch(function (e) { setStatus('Erro: ' + (e && e.message || e), 'error'); })
+      .then(function () { btnGerar.disabled = false; });
+  };
+
+  function nomeFinal() {
+    return nomeArquivo.replace(/\.[^.]+$/, '') + '_assinado_' + (gerado ? gerado.codigo : '') + '.pdf';
+  }
+  btnBaixar.onclick = function () {
+    if (!gerado) return;
+    var a = document.createElement('a'); a.href = URL.createObjectURL(gerado.blob); a.download = nomeFinal();
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  };
+
+  /* ══════════ gravar no sistema ══════════ */
+  btnGravar.onclick = function () {
+    if (!gerado) { setStatus('Gere o documento assinado primeiro.', 'error'); return; }
+    btnGravar.disabled = true; setStatus('Gravando no sistema...', 'loading');
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('pdf', gerado.blob, nomeFinal());
+    fd.append('codigo', gerado.codigo);
+    fd.append('nome_arquivo', nomeArquivo);
+    fd.append('paginas', gerado.paginas);
+    fd.append('sha256_original', gerado.sha256Original);
+    fd.append('paciente', $('pacienteId').value || '');
+    fd.append('anexar', $('optAnexar') && $('optAnexar').checked ? '1' : '0');
+    fetch('{% url "documentos:assinar_gravar" %}', { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) throw new Error(d.erro);
+        btnGravar.style.display = 'none';
+        setStatus('✔ Gravado no sistema (código ' + d.codigo + ')' + (d.anexado ? ' e anexado ao prontuário' : '') + '. Agora o código pode ser conferido publicamente.', 'ok');
+      })
+      .catch(function (e) { setStatus('Erro ao gravar: ' + e.message, 'error'); })
+      .then(function () { btnGravar.disabled = false; });
+  };
+})();
+</script>
+{% endif %}
+{% endblock %}

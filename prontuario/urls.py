@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import especialidades, termos, views
 
 app_name = 'prontuario'
 
@@ -22,6 +22,13 @@ urlpatterns = [
     path('paciente/<int:pk>/resultados/', views.resultados_lancar, name='resultados_lancar'),
     path('modelos/padrao/', views.modelos_padrao, name='modelos_padrao'),
     path('exames/padrao/', views.exames_padrao, name='exames_padrao'),
+    path('paciente/<int:pk>/termo/novo/', termos.termo_novo, name='termo_novo'),
+    path('termo/<int:pk>/', termos.termo, name='termo'),
+    path('paciente/<int:pk>/odontograma/', especialidades.odontograma, name='odontograma'),
+    path('paciente/<int:pk>/odontograma/salvar/', especialidades.odontograma_salvar, name='odontograma_salvar'),
+    path('curvas/importar/', especialidades.importar_curvas, name='importar_curvas'),
+    path('termo/<int:pk>/assinatura/', termos.termo_assinatura, name='termo_assinatura'),
 ]
 urlpatterns += views.ModeloCrud.urls('modelos')
 urlpatterns += views.ExameCrud.urls('exames')
+urlpatterns += termos.ModeloTermoCrud.urls('termos-modelos')

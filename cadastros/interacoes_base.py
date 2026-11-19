@@ -91,4 +91,83 @@ def carregar(apagar_antigas=False):
             substancia_a=a, substancia_b=b,
             defaults={'gravidade': grav, 'efeito': efeito, 'conduta': conduta, 'fonte': FONTE})
         n += criado
+    return n + carregar_extra()
+
+QT_A = 'amiodarona, sotalol, haloperidol'
+QT_B = 'azitromicina, claritromicina, eritromicina, levofloxacino, moxifloxacino, ondansetrona, domperidona'
+TRIPTANOS = 'sumatriptana, rizatriptana, naratriptana, zolmitriptana'
+CORTIC = 'prednisona, prednisolona, dexametasona, betametasona, metilprednisolona, hidrocortisona'
+AZOIS_FORTES = 'cetoconazol, itraconazol, claritromicina, ritonavir'
+IMUNO = 'ciclosporina, tacrolimo'
+
+INTERACOES_EXTRA = [
+    (QT_A, QT_B, 'grave', 'Prolongamento do intervalo QT com risco de arritmia (torsades de pointes).',
+     'Evitar a associação; se inevitável, ECG e controle de potássio/magnésio.'),
+    ('metoclopramida', 'haloperidol, risperidona, olanzapina', 'moderada', 'Aumento de efeitos extrapiramidais.',
+     'Evitar uso conjunto prolongado.'),
+    ('sildenafila, tadalafila, vardenafila', 'doxazosina, terazosina, prazosina', 'moderada',
+     'Hipotensão sintomática.', 'Iniciar com doses baixas e espaçar as tomadas.'),
+    ('tamoxifeno', 'fluoxetina, paroxetina, bupropiona', 'grave',
+     'Redução da conversão do tamoxifeno em metabólito ativo (CYP2D6), com perda de eficácia.',
+     'Preferir antidepressivo sem inibição forte do CYP2D6.'),
+    ('codeina', 'fluoxetina, paroxetina, bupropiona', 'moderada', 'Redução do efeito analgésico da codeína (CYP2D6).',
+     'Considerar outro analgésico.'),
+    ('varfarina', 'carbamazepina, rifampicina, fenitoina, fenobarbital', 'grave',
+     'Redução do efeito anticoagulante (indução enzimática).', 'Monitorar INR e ajustar dose.'),
+    ('acido valproico, valproato, divalproato', 'meropenem, imipenem, ertapenem', 'grave',
+     'Queda acentuada dos níveis de valproato com risco de convulsões.', 'Evitar; usar outro antibiótico.'),
+    ('acido valproico, valproato, divalproato', 'lamotrigina', 'grave',
+     'Aumento dos níveis de lamotrigina, com risco de reações cutâneas graves.', 'Ajustar a dose da lamotrigina.'),
+    ('teofilina, aminofilina', 'eritromicina, claritromicina', 'moderada', 'Aumento dos níveis de teofilina.',
+     'Monitorar níveis e sintomas de toxicidade.'),
+    ('colchicina', 'ciclosporina, cetoconazol, itraconazol, ritonavir', 'grave', 'Toxicidade da colchicina.',
+     'Evitar ou reduzir dose.'),
+    (IMUNO, 'cetoconazol, itraconazol, fluconazol, voriconazol, claritromicina, eritromicina, diltiazem, verapamil',
+     'grave', 'Aumento dos níveis do imunossupressor (nefrotoxicidade).', 'Monitorar nível sérico e função renal.'),
+    (IMUNO, 'rifampicina, carbamazepina, fenitoina, fenobarbital', 'grave',
+     'Redução dos níveis do imunossupressor com risco de rejeição.', 'Monitorar nível sérico.'),
+    ('espironolactona, amilorida', 'sulfametoxazol, trimetoprima', 'grave', 'Risco de hipercalemia grave.',
+     'Evitar ou monitorar potássio.'),
+    ('enalapril, captopril, lisinopril, ramipril, losartana, valsartana, candesartana', 'sulfametoxazol, trimetoprima',
+     'moderada', 'Risco de hipercalemia.', 'Monitorar potássio, especialmente em idosos e renais.'),
+    ('insulina, glibenclamida, gliclazida, glimepirida', 'levofloxacino, ciprofloxacino, moxifloxacino', 'moderada',
+     'Hipo ou hiperglicemia.', 'Monitorar glicemia.'),
+    ('glibenclamida, glimepirida, gliclazida', 'fluconazol', 'moderada', 'Aumento do risco de hipoglicemia.',
+     'Monitorar glicemia.'),
+    ('linezolida', 'venlafaxina, duloxetina, tramadol, bupropiona', 'grave', 'Risco de síndrome serotoninérgica.',
+     'Evitar a associação.'),
+    (TRIPTANOS, 'fluoxetina, sertralina, paroxetina, citalopram, escitalopram, venlafaxina, duloxetina', 'moderada',
+     'Risco de síndrome serotoninérgica.', 'Orientar sinais de alerta.'),
+    (TRIPTANOS, 'ergotamina, di-hidroergotamina', 'contraindicada', 'Vasoconstrição prolongada.',
+     'Intervalo mínimo de 24 horas entre os medicamentos.'),
+    ('ergotamina, di-hidroergotamina', AZOIS_FORTES + ', eritromicina', 'contraindicada',
+     'Ergotismo (isquemia grave de extremidades).', 'Associação contraindicada.'),
+    ('ciprofloxacino, levofloxacino, moxifloxacino, norfloxacino', CORTIC, 'moderada',
+     'Aumento do risco de tendinite e ruptura de tendão.', 'Orientar o paciente; cautela em idosos.'),
+    (AINES, CORTIC, 'moderada', 'Aumento do risco de úlcera e sangramento gastrointestinal.',
+     'Considerar gastroproteção.'),
+    (AINES, 'metotrexato', 'grave', 'Redução da eliminação do metotrexato com toxicidade.',
+     'Evitar com doses altas de metotrexato; monitorar.'),
+    ('digoxina', 'furosemida, hidroclorotiazida, clortalidona, indapamida', 'moderada',
+     'Hipocalemia pelo diurético aumenta o risco de toxicidade digitálica.', 'Monitorar potássio.'),
+    ('propranolol, atenolol, metoprolol, carvedilol, bisoprolol', 'clonidina', 'moderada',
+     'Hipertensão de rebote na suspensão da clonidina.', 'Retirar o beta-bloqueador antes da clonidina.'),
+    ('alopurinol', 'amoxicilina, ampicilina', 'leve', 'Maior incidência de exantema (rash).', 'Observar.'),
+    ('lamotrigina', 'etinilestradiol, levonorgestrel, desogestrel, gestodeno', 'moderada',
+     'Redução dos níveis de lamotrigina.', 'Ajustar dose e monitorar resposta.'),
+    ('sinvastatina, lovastatina', 'fluconazol, diltiazem, verapamil, anlodipino', 'moderada',
+     'Aumento dos níveis da estatina (miopatia).', 'Limitar dose conforme bula.'),
+    ('metotrexato', 'omeprazol, esomeprazol, pantoprazol', 'moderada',
+     'Aumento dos níveis de metotrexato em doses altas.', 'Considerar suspender o IBP.'),
+    ('clozapina', 'carbamazepina', 'grave', 'Aumento do risco de agranulocitose.', 'Evitar a associação.'),
+]
+
+
+def carregar_extra():
+    from .models import InteracaoMedicamentosa
+    n = 0
+    for a, b, grav, efeito, conduta in INTERACOES_EXTRA:
+        n += InteracaoMedicamentosa.objects.get_or_create(
+            substancia_a=a, substancia_b=b,
+            defaults={'gravidade': grav, 'efeito': efeito, 'conduta': conduta, 'fonte': FONTE})[1]
     return n

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Lotes TISS{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-box-seam"></i>Faturamento TISS — lotes</h1><p>Agrupe as guias abertas por operadora e competência, gere o XML e registre o pagamento e as glosas.</p></div>
+  <a href="{% url 'convenios:guias' %}" class="btn btn-light border"><i class="bi bi-file-earmark-medical"></i> Guias</a></div>
+<div class="row g-3 mb-3">
+  {% if pode_editar %}<div class="col-lg-5"><form method="post" class="card h-100">{% csrf_token %}<div class="card-header">Novo lote</div><div class="card-body row g-2">
+    <div class="col-7"><label class="form-label" for="id_operadora">Operadora</label>{{ form.operadora }}</div>
+    <div class="col-5"><label class="form-label" for="id_competencia">Competência</label>{{ form.competencia }}</div>
+    <div class="col-12 text-end"><button class="btn btn-primary"><i class="bi bi-plus-lg"></i> Criar lote com as guias abertas</button></div></div></form></div>{% endif %}
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header">Guias abertas a faturar</div><ul class="list-group list-group-flush">
+    {% for p in pendentes %}<li class="list-group-item d-flex justify-content-between"><span>{{ p.operadora__nome }}</span><span>{{ p.n }} guia(s) · <b>{{ p.v|moeda }}</b></span></li>
+    {% empty %}<li class="list-group-item text-muted small">Nenhuma guia aberta.</li>{% endfor %}</ul></div></div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>Lote</th><th>Operadora</th><th>Competência</th><th>Guias</th><th class="num">Apresentado</th><th class="num">Pago</th><th>Envio</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for l in lotes %}<tr><td class="fw-semibold">{{ l.numero }}</td><td>{{ l.operadora }}</td><td>{{ l.competencia }}</td><td>{{ l.n }}</td>
+    <td class="num">{{ l.valor_total|moeda }}</td><td class="num">{{ l.valor_pago|moeda }}</td><td>{{ l.data_envio|date:"d/m/Y"|default:"-" }}</td>
+    <td><span class="badge text-bg-light border">{{ l.get_status_display }}</span></td><td class="text-end"><a href="{% url 'convenios:lote' l.pk %}" class="btn btn-sm btn-light"><i class="bi bi-eye"></i></a></td></tr>
+  {% empty %}<tr><td colspan="9"><div class="vazio">Nenhum lote.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

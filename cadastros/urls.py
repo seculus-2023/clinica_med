@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/medicamentos/', views.api_medicamentos, name='api_medicamentos'),
     path('api/procedimentos/', views.api_procedimentos, name='api_procedimentos'),
     path('api/cid/', views.api_cid, name='api_cid'),
+    path('api/pacientes/', views.api_pacientes, name='api_pacientes'),
     path('api/verificar-prescricao/', views.api_verificar_prescricao, name='api_verificar_prescricao'),
     path('interacoes/importar/', views.interacao_importar, name='interacao_importar'),
     path('medicamentos/<int:pk>/bula/', views.medicamento_bula, name='medicamento_bula'),

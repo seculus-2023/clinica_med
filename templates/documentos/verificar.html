@@ -1,0 +1,36 @@
+{% load static %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>Verificar documento | MedAccess</title>
+<style>.pub { min-height: 100vh; background: linear-gradient(180deg, #0b1f24 0, #12303a 220px, #f2f6f7 220px); padding: 1.5rem 1rem 3rem; } .pub .box { max-width: 720px; margin: 0 auto; }</style></head>
+<body><main class="pub"><div class="box">
+  <div class="d-flex align-items-center gap-2 text-white mb-3"><img src="{% static 'icons/icon-192.png' %}" alt="" style="width: 44px; border-radius: 10px;">
+    <div><div class="fw-bold fs-5">Verificação de documento</div><div class="small opacity-75">Confira a autenticidade de receitas, atestados e documentos assinados.</div></div></div>
+  <div class="card"><div class="card-body p-4">
+    <form method="post" enctype="multipart/form-data" class="mb-3">{% csrf_token %}
+      <label class="form-label fw-semibold" for="codigo">Código de verificação</label>
+      <div class="input-group"><input id="codigo" name="codigo" value="{{ codigo }}" class="form-control form-control-lg text-uppercase" placeholder="XXXX-XXXX-XXXX-XXXX" required>
+        <button class="btn btn-primary"><i class="bi bi-search"></i> Verificar</button></div>
+      <div class="mt-2"><label class="form-label small mb-1" for="arquivo">Opcional: envie o PDF recebido para conferir se não foi alterado</label>
+        <input type="file" name="arquivo" id="arquivo" accept="application/pdf" class="form-control form-control-sm"></div>
+    </form>
+    {% if buscou %}
+      {% if r %}
+        <div class="alert alert-success"><i class="bi bi-patch-check-fill"></i> <b>Documento autêntico</b>, emitido pelo sistema MedAccess.</div>
+        <table class="table table-sm mb-2"><tbody>
+          <tr><th style="width: 35%;">Tipo</th><td>{{ r.tipo }}</td></tr>
+          <tr><th>Documento</th><td>{{ r.documento }}</td></tr>
+          <tr><th>Profissional</th><td>{{ r.medico.nome }}{% if r.medico.registro_completo %} — {{ r.medico.registro_completo }}{% endif %}</td></tr>
+          <tr><th>Estabelecimento</th><td>{{ r.clinica.nome }}{% if r.clinica.cidade %} — {{ r.clinica.cidade }}/{{ r.clinica.uf }}{% endif %}</td></tr>
+          <tr><th>Data</th><td>{{ r.data|date:"d/m/Y H:i" }}</td></tr>
+          {% if r.paciente_iniciais %}<tr><th>Paciente (iniciais)</th><td>{{ r.paciente_iniciais }}</td></tr>{% endif %}
+          {% if r.paginas %}<tr><th>Páginas</th><td>{{ r.paginas }}</td></tr>{% endif %}
+          {% if r.sha256 %}<tr><th>Hash SHA-256</th><td class="small text-break font-monospace">{{ r.sha256 }}</td></tr>{% endif %}
+        </tbody></table>
+        {% if hash_ok is True %}<div class="alert alert-success py-2"><i class="bi bi-shield-check"></i> O PDF enviado é <b>idêntico</b> ao documento assinado.</div>
+        {% elif hash_ok is False %}<div class="alert alert-danger py-2"><i class="bi bi-shield-exclamation"></i> O PDF enviado <b>não corresponde</b> ao documento assinado (foi alterado ou é outro arquivo).</div>{% endif %}
+        <p class="small text-muted mb-0">Assinatura eletrônica simples (Lei 14.063/2020). Para fins de sigilo, dados do paciente não são exibidos.</p>
+      {% else %}
+        <div class="alert alert-danger"><i class="bi bi-x-octagon"></i> Nenhum documento encontrado com este código.</div>
+      {% endif %}
+    {% endif %}
+  </div></div>
+</div></main></body></html>

@@ -73,6 +73,12 @@ Mesmo padrão do projeto Site: Django em `127.0.0.1:18003` atrás do Caddy.
 - **Financeiro**: contas a pagar/receber, baixa, fluxo de caixa, **conciliação bancária** (extrato OFX/CSV, casamento automático), repasse médico com taxas de cartão.
 - **Estoque**: produtos, lotes e validade, kardex, baixa automática de insumos por atendimento (rastreio por paciente).
 - **Relacionamento**: WhatsApp/e-mail automáticos, call center pós-consulta/faltas/retornos, NPS, aniversários, campanhas segmentadas.
+- **Convênios e TISS**: operadoras (ANS), planos, tabela de preço por convênio/plano, validade da carteirinha, autorização prévia, guias de consulta e SP/SADT geradas ao concluir o atendimento, lotes com XML TISS (hash MD5), pagamento e controle de glosas.
+- **Caixa e orçamentos**: caixa diário por usuário (abertura/fechamento com diferença), recibo com valor por extenso, orçamentos com aprovação em parcelas, DRE e exportação Excel/PDF de todos os relatórios.
+- **Compras e estoque**: fornecedores, pedidos de compra (recebimento gera entrada com lote/validade e conta a pagar), inventário com ajustes automáticos, alerta de lotes a vencer, salas e equipamentos na agenda.
+- **Assinatura eletrônica**: assinatura do médico no cadastro (imagem ou desenho), assinatura de PDFs com certificação lateral e código, receitas/atestados assinados, termos de consentimento assinados pelo paciente na tela, verificação pública em `/documentos/verificar/`.
+- **Relacionamento**: respostas do WhatsApp (SIM/NÃO confirma/cancela; caixa de conversas), portal do paciente (código por WhatsApp/e-mail), notificações no aparelho, odontograma e curva de crescimento (com tabelas OMS importadas).
+- **SaaS** (opcional, `SAAS_ATIVO=1`): cadastro público de clínicas com teste grátis, planos com limites, faturas com PIX copia e cola/QR e bloqueio por inadimplência.
 - **Relatórios/BI**: ocupação, faltas, ticket médio, origem dos pacientes, faturamento por convênio, NPS e outros, com exportação CSV.
 
 ## Enviar para o GitHub

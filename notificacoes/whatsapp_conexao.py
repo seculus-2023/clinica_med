@@ -78,8 +78,9 @@ def conexao(request):
             st['detalhe'] = f'Erro ao obter QR Code: {e}'
     if request.GET.get('json'):
         return JsonResponse({'status': st, 'qr': qr})
+    from .recebimento import url_webhook
     return render(request, 'notificacoes/conexao.html', {'st': st, 'qr': qr, 'codigo': codigo, 'c': c,
-                                                         'instancia': _instancia(c)})
+                                                         'instancia': _instancia(c), 'webhook': url_webhook(c)})
 
 
 @acesso('administrativo', 'editar')

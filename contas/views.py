@@ -74,7 +74,8 @@ def configuracoes(request):
     from django.conf import settings
     from django.urls import reverse
     link = settings.SITE_URL + reverse('agenda:online', args=[request.clinica.codigo_publico])
-    return render(request, 'contas/configuracoes.html', {'form': form, 'link_online': link})
+    portal = settings.SITE_URL + reverse('portal:entrar', args=[request.clinica.codigo_publico])
+    return render(request, 'contas/configuracoes.html', {'form': form, 'link_online': link, 'link_portal': portal})
 
 
 # ---------------- Usuários da clínica ----------------
@@ -98,7 +99,9 @@ def usuario_form(request, pk=None):
                    'email': usuario.email, 'telefone': usuario.telefone, 'perfil': vinculo.perfil,
                    'ativo': vinculo.ativo}
     form = UsuarioClinicaForm(request.POST or None, initial=inicial, clinica=request.clinica, usuario=usuario)
-    if request.method == 'POST' and form.is_valid():
+    if request.method == 'POST' and form.is_valid() and not vinculo and _limite(request, 'usuarios'):
+        messages.error(request, 'Limite de usuários do seu plano atingido. Faça upgrade em "Minha assinatura".')
+    elif request.method == 'POST' and form.is_valid():
         d = form.cleaned_data
         u = usuario or Usuario()
         for campo in ('username', 'first_name', 'last_name', 'email', 'telefone'):
@@ -192,3 +195,11 @@ def minha_conta(request):
         return redirect('painel:dashboard')
     return render(request, 'form_simples.html', {'form': form, 'titulo': 'Alterar minha senha',
                                                  'voltar': 'painel:dashboard'})
+
+
+def _limite(request, tipo):
+    from django.conf import settings
+    if not settings.SAAS_ATIVO or request.user.is_superuser:
+        return False
+    a = getattr(request.clinica, 'assinatura', None)
+    return bool(a and a.limite_atingido(tipo))

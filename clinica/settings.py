@@ -8,7 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _carregar_env(arquivo):
-    """Carrega variáveis de um arquivo .env (CHAVE=valor). Variáveis já definidas no sistema prevalecem."""
+    """Carrega variáveis de um arquivo .env (CHAVE=valor). O .env sempre prevalece (inclusive sobre valores
+    herdados de um runserver iniciado antes de o .env ser alterado)."""
     if not arquivo.exists():
         return
     for linha in arquivo.read_text(encoding='utf-8').splitlines():
@@ -19,7 +20,7 @@ def _carregar_env(arquivo):
         valor = valor.strip()
         if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in '"\'':
             valor = valor[1:-1]
-        os.environ.setdefault(chave.strip(), valor)
+        os.environ[chave.strip()] = valor
 
 
 _carregar_env(BASE_DIR / '.env')
@@ -49,6 +50,9 @@ INSTALLED_APPS = [
     'estoque',
     'financeiro',
     'prontuario',
+    'convenios',
+    'portal',
+    'assinaturas',
     'documentos',
     'callcenter',
     'notificacoes',
@@ -64,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'contas.middleware.ClinicaMiddleware',
+    'assinaturas.middleware.AssinaturaMiddleware',
     'notificacoes.middleware.AutoLembretesMiddleware',
 ]
 
@@ -90,14 +95,14 @@ FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 WSGI_APPLICATION = 'clinica.wsgi.application'
 
 # ---- Banco de dados (configurado no .env) ----
-# DB_ENGINE: sqlite (padrão), postgresql ou mysql
+# DB_ENGINE: postgresql (padrão), sqlite ou mysql
 _DB_ENGINES = {
     'sqlite': 'django.db.backends.sqlite3',
     'postgresql': 'django.db.backends.postgresql',
     'postgres': 'django.db.backends.postgresql',
     'mysql': 'django.db.backends.mysql',
 }
-_db_engine = env('DB_ENGINE', 'sqlite').strip().lower()
+_db_engine = env('DB_ENGINE', 'postgresql').strip().lower()
 if _db_engine not in _DB_ENGINES:
     raise ValueError(f'DB_ENGINE inválido no .env: "{_db_engine}". Use sqlite, postgresql ou mysql.')
 if _db_engine == 'sqlite':
@@ -162,7 +167,15 @@ AUTO_LEMBRETES_INTERVALO_MIN = int(env('AUTO_LEMBRETES_INTERVALO_MIN', '10'))
 # Envio de notificações em segundo plano (thread). Desligado nos testes.
 NOTIFICACOES_ASSINCRONAS = env('NOTIFICACOES_ASSINCRONAS', '1') == '1'
 
-PWA_VERSAO = '1.0.0'
+PWA_VERSAO = '1.1.0'
+
+# ---- Venda do sistema para outras clínicas (SaaS) ----
+SAAS_ATIVO = env('SAAS_ATIVO', '0') == '1'                 # ativa planos, limites, faturas e bloqueio
+SAAS_CADASTRO_ABERTO = env('SAAS_CADASTRO_ABERTO', '0') == '1'   # página pública /assinatura/cadastro/
+SAAS_NOME = env('SAAS_NOME', 'MedAccess')
+SAAS_PIX_CHAVE = env('SAAS_PIX_CHAVE', '')                 # chave PIX que recebe as mensalidades
+SAAS_PIX_NOME = env('SAAS_PIX_NOME', 'MedAccess')
+SAAS_PIX_CIDADE = env('SAAS_PIX_CIDADE', 'Sao Paulo')
 
 # ---- Produção (HTTPS): ativado automaticamente com DJANGO_DEBUG=0 ----
 if not DEBUG:

@@ -12,8 +12,14 @@
       {% include "_campo.html" with f=form.pacote col="col-md-6" %}
       {% include "_campo.html" with f=form.tipo col="col-md-6" %}
       {% include "_campo.html" with f=form.inicio col="col-md-4" %}
+      {% include "_campo.html" with f=form.recurso col="col-md-4" %}
       {% include "_campo.html" with f=form.status col="col-md-4" %}
       {% include "_campo.html" with f=form.valor col="col-md-4" %}
+      <div class="col-12"><div class="border rounded p-2 bg-light"><div class="small fw-semibold mb-2"><i class="bi bi-building-check"></i> Convênio <span class="text-muted fw-normal" id="infoCarteira"></span></div><div class="row g-2">
+      {% include "_campo.html" with f=form.operadora col="col-md-3" %}
+      {% include "_campo.html" with f=form.plano col="col-md-3" %}
+      {% include "_campo.html" with f=form.autorizacao_status col="col-md-3" %}
+      {% include "_campo.html" with f=form.autorizacao_senha col="col-md-3" %}</div></div></div>
       {% include "_campo.html" with f=form.convenio col="col-md-4" %}
       {% include "_campo.html" with f=form.teleconsulta col="col-md-4" %}
       {% include "_campo.html" with f=form.notificar col="col-md-4" %}
@@ -40,7 +46,25 @@
         });
       });
   }
-  pac.addEventListener('change', function () { atual = ''; carregar(); });
+  pac.addEventListener('change', function () { atual = ''; carregar(); carregarConvenio(); });
+  var op = document.getElementById('id_operadora'), pl = document.getElementById('id_plano'), info = document.getElementById('infoCarteira');
+  function preencherPlanos(lista, sel) {
+    pl.innerHTML = '<option value="">---------</option>';
+    lista.forEach(function (p) { var o = document.createElement('option'); o.value = p.id; o.textContent = p.nome; if (String(p.id) === String(sel)) o.selected = true; pl.appendChild(o); });
+  }
+  function carregarConvenio() {
+    if (!pac.value) return;
+    fetch('/convenios/api/paciente/' + pac.value + '/', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.operadora && !op.value) { op.value = d.operadora; preencherPlanos(d.planos, d.plano); }
+      info.textContent = d.carteirinha ? '— carteira ' + d.carteirinha + (d.validade ? ' (validade ' + d.validade + ')' : '') : '';
+      info.className = d.vencida ? 'text-danger fw-semibold' : 'text-muted fw-normal';
+      if (d.vencida) info.textContent += ' — VENCIDA';
+    });
+  }
+  op.addEventListener('change', function () {
+    fetch('/convenios/api/planos/?operadora=' + (op.value || 0), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) { preencherPlanos(d, ''); });
+  });
+  if (pac.value) carregarConvenio();
   pacote.addEventListener('change', function () {
     var o = pacote.selectedOptions[0];
     if (o && o.dataset.tipo) tipo.value = o.dataset.tipo;

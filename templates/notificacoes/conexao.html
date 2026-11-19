@@ -29,6 +29,9 @@
     <p><b>WhatsApp Cloud API (Meta)</b>: crie um app no Meta for Developers, adicione o produto WhatsApp, registre o número da
       clínica e informe o <b>Phone Number ID</b> (campo Instância) e um <b>token permanente</b>. Atenção: para iniciar conversas
       fora da janela de 24h a Meta exige <b>modelos de mensagem aprovados</b>.</p>
+    <div class="alert alert-info py-2"><b>Receber respostas dos pacientes</b> (SIM/NÃO e conversas): cadastre esta URL como
+      <i>webhook de mensagens recebidas</i> no provedor (Evolution: evento MESSAGES_UPSERT; Z-API: "Ao receber";
+      Meta: Callback URL, com o mesmo token final como <i>verify token</i>):<br><code class="text-break">{{ webhook }}</code></div>
     <p class="mb-0"><b>Webhook</b>: o sistema faz POST JSON <code>{remetente, telefone, mensagem, clinica}</code> na URL informada
       (para integrar com n8n, Make, um bot próprio etc.).</p>
   </div></div></div>

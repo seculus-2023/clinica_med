@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Pedido {{ p.pk }}{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-cart3"></i>Pedido {{ p.pk }} — {{ p.fornecedor }}</h1>
+  <p>{{ p.data|date:"d/m/Y" }} · {{ p.get_status_display }}{% if p.recebido_em %} em {{ p.recebido_em|date:"d/m/Y" }}{% endif %}{% if p.nota_fiscal %} · NF {{ p.nota_fiscal }}{% endif %} · total {{ p.total|moeda }}</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-light border" onclick="print()"><i class="bi bi-printer"></i> Imprimir</button>
+    {% if pode_editar and p.status == 'rascunho' or pode_editar and p.status == 'enviado' %}<a href="{% url 'estoque:pedido_editar' p.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>{% endif %}
+    {% if pode_editar and p.status == 'rascunho' %}<form method="post" action="{% url 'estoque:pedido_acao' p.pk %}">{% csrf_token %}<button name="acao" value="enviar" class="btn btn-info"><i class="bi bi-send"></i> Marcar como enviado</button></form>{% endif %}
+    {% if pode_editar and p.status != 'recebido' and p.status != 'cancelado' %}<form method="post" action="{% url 'estoque:pedido_acao' p.pk %}" data-confirm="Cancelar o pedido?">{% csrf_token %}<button name="acao" value="cancelar" class="btn btn-outline-danger">Cancelar</button></form>{% endif %}
+    <a href="{% url 'estoque:pedidos' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i></a></div></div>
+{% if p.lancamento %}<div class="alert alert-light border small py-2"><i class="bi bi-cash-coin"></i> Despesa no contas a pagar: <a href="{% url 'financeiro:lancamento_editar' p.lancamento.pk %}">{{ p.lancamento.descricao }}</a> — {{ p.lancamento.valor|moeda }}, vencimento {{ p.lancamento.vencimento|date:"d/m/Y" }}.</div>{% endif %}
+<form method="post" action="{% url 'estoque:pedido_acao' p.pk %}" data-confirm="Confirmar o recebimento? O estoque será atualizado.">{% csrf_token %}
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0">
+  <thead><tr><th>Produto</th><th style="width: 110px;">Qtd.</th><th style="width: 130px;">Custo unit.</th><th style="width: 140px;">Lote</th><th style="width: 160px;">Validade</th><th class="num">Total</th></tr></thead>
+  <tbody>{% for i in itens %}<tr><td class="fw-semibold">{{ i.produto }}</td>
+    {% if p.status == 'recebido' or p.status == 'cancelado' or not pode_editar %}<td>{{ i.quantidade }}</td><td>{{ i.custo_unitario|moeda }}</td><td>{{ i.lote|default:"-" }}</td><td>{{ i.validade|date:"d/m/Y"|default:"-" }}</td>
+    {% else %}<td><input name="qtd_{{ i.pk }}" value="{{ i.quantidade }}" class="form-control form-control-sm" inputmode="decimal"></td>
+      <td><input name="custo_{{ i.pk }}" value="{{ i.custo_unitario }}" class="form-control form-control-sm" inputmode="decimal"></td>
+      <td><input name="lote_{{ i.pk }}" value="{{ i.lote }}" class="form-control form-control-sm"></td>
+      <td><input type="date" name="validade_{{ i.pk }}" value="{{ i.validade|date:'Y-m-d' }}" class="form-control form-control-sm"></td>{% endif %}
+    <td class="num">{{ i.total|moeda }}</td></tr>{% endfor %}</tbody></table></div>
+  {% if pode_editar and p.status != 'recebido' and p.status != 'cancelado' %}<div class="card-footer bg-transparent d-flex flex-wrap gap-2 justify-content-end align-items-center">
+    <label class="small" for="dtRec">Recebido em</label><input type="date" id="dtRec" name="data" value="{{ hoje|date:'Y-m-d' }}" class="form-control form-control-sm" style="width: 160px;">
+    <input name="nota_fiscal" value="{{ p.nota_fiscal }}" placeholder="Nota fiscal" class="form-control form-control-sm" style="width: 150px;">
+    <div class="form-check"><input type="checkbox" class="form-check-input" name="gerar_despesa" value="1" id="gd" checked><label class="form-check-label small" for="gd">Lançar no contas a pagar</label></div>
+    <button name="acao" value="receber" class="btn btn-success"><i class="bi bi-box-arrow-in-down"></i> Receber pedido</button></div>{% endif %}
+</div></form>
+{% endblock %}

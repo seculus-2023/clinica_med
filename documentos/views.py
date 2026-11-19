@@ -17,7 +17,7 @@ class DocumentoForm(ClinicaModelForm):
 
     class Meta:
         model = Documento
-        fields = ['tipo', 'paciente', 'medico', 'data', 'titulo', 'cid', 'dias', 'conteudo']
+        fields = ['tipo', 'paciente', 'medico', 'data', 'titulo', 'cid', 'dias', 'conteudo', 'visivel_paciente']
         widgets = {'conteudo': forms.Textarea(attrs={'rows': 10}),
                    'cid': Autocomplete('cadastros:api_cid', modo='texto')}
 
@@ -132,8 +132,14 @@ def documento_form(request, pk=None):
 
 @acesso('documentos')
 def imprimir(request, pk):
-    doc = get_object_or_404(DocumentoCrud.queryset(request).select_related('clinica'), pk=pk)
-    return render(request, 'documentos/imprimir.html', {'doc': doc, 'c': doc.clinica})
+    from .models import url_verificacao
+    doc = get_object_or_404(DocumentoCrud.queryset(request).select_related('clinica', 'medico'), pk=pk)
+    if not doc.codigo_verificacao:
+        doc.save()
+    # a assinatura só é aplicada quando o próprio médico emite/imprime o documento
+    assinar = bool(doc.medico.assinatura) and doc.medico.usuario_id == request.user.pk
+    return render(request, 'documentos/imprimir.html', {
+        'doc': doc, 'c': doc.clinica, 'assinar': assinar, 'url_verificacao': url_verificacao(doc.codigo_verificacao)})
 
 
 @acesso('documentos')

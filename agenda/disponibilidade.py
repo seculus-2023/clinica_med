@@ -23,6 +23,10 @@ def horarios_livres(clinica, medico, tipo, data, antecedencia_horas=None):
         medico__in=[medico]).values_list('inicio', 'fim')) + list(BloqueioAgenda.objects.filter(
             clinica=clinica, medico__isnull=True, inicio__lt=ini_dia + timedelta(days=1), fim__gt=ini_dia
         ).values_list('inicio', 'fim'))
+    if tipo.recurso_id:   # sala/equipamento do procedimento também precisa estar livre
+        ocupados += list(Agendamento.objects.filter(
+            clinica=clinica, recurso_id=tipo.recurso_id, inicio__lt=ini_dia + timedelta(days=1), fim__gt=ini_dia
+        ).exclude(status__in=('cancelado', 'faltou')).values_list('inicio', 'fim'))
     livres = []
     for h in HorarioAtendimento.objects.filter(clinica=clinica, medico=medico, dia_semana=data.weekday()):
         t = timezone.make_aware(datetime.combine(data, h.inicio), tz)

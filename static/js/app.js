@@ -64,6 +64,40 @@ function iniciarAutocomplete(raiz) {
   });
 }
 
+function iniciarNotificacoes() {
+  var btn = document.getElementById('btnNotificacoes');
+  if (!document.body.dataset.logado || !('Notification' in window)) { if (btn) btn.hidden = true; return; }
+  function atualizarBotao() {
+    if (!btn) return;
+    var p = Notification.permission;
+    btn.hidden = p === 'denied';
+    btn.innerHTML = p === 'granted' ? '<i class="bi bi-bell-fill me-2"></i>Notificações ativadas' : '<i class="bi bi-bell me-2"></i>Ativar notificações no aparelho';
+  }
+  atualizarBotao();
+  if (btn) btn.addEventListener('click', function () {
+    if (Notification.permission === 'default') Notification.requestPermission().then(function () { atualizarBotao(); verificar(); });
+  });
+  var CHAVE = 'ma_notif_desde', vistos = {};
+  function ler() { try { return parseFloat(localStorage.getItem(CHAVE)) || (Date.now() / 1000 - 60); } catch (e) { return Date.now() / 1000 - 60; } }
+  function gravar(v) { try { localStorage.setItem(CHAVE, String(v)); } catch (e) { /* sem armazenamento */ } }
+  function mostrar(it) {
+    if (vistos[it.id]) return; vistos[it.id] = 1;
+    var op = { body: it.texto || '', icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png', tag: it.id, data: { url: it.url } };
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready.then(function (reg) { reg.showNotification(it.titulo, op); }).catch(function () { new Notification(it.titulo, op); });
+    } else { new Notification(it.titulo, op); }
+  }
+  function verificar() {
+    if (Notification.permission !== 'granted') return;
+    fetch('/notificacoes/api/novidades/?desde=' + ler(), { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (!d) return; d.itens.forEach(mostrar); gravar(d.agora); })
+      .catch(function () { /* offline */ });
+  }
+  verificar();
+  setInterval(verificar, 60000);
+}
+
 (function () {
   'use strict';
 
@@ -132,6 +166,9 @@ function iniciarAutocomplete(raiz) {
     window.addEventListener('online', rede);
     window.addEventListener('offline', rede);
     rede();
+
+    // ---------- Notificações do aplicativo (lembretes e mensagens) ----------
+    iniciarNotificacoes();
 
     // ---------- Autocomplete (CMED, SIGTAP, CID...) ----------
     iniciarAutocomplete(document);

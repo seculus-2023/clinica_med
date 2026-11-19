@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Glosas{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-exclamation-octagon"></i>Controle de glosas</h1><p>O que foi pago e o que foi contestado pelas operadoras.</p></div>
+  <a href="{% url 'convenios:guias' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i> Guias</a></div>
+<div class="row g-3 mb-3">
+  <div class="col-md-6"><div class="card h-100"><div class="card-header">Por operadora</div><ul class="list-group list-group-flush">{% for o in por_op %}<li class="list-group-item d-flex justify-content-between"><span>{{ o.operadora__nome }}</span><span>{{ o.n }} · <b class="text-danger">{{ o.v|moeda }}</b></span></li>{% empty %}<li class="list-group-item text-muted small">Sem glosas.</li>{% endfor %}</ul></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-header">Por motivo</div><ul class="list-group list-group-flush">{% for m, n, v in por_motivo %}<li class="list-group-item d-flex justify-content-between small"><span>{{ m }}</span><span>{{ n }} · <b class="text-danger">{{ v|moeda }}</b></span></li>{% empty %}<li class="list-group-item text-muted small">Sem glosas.</li>{% endfor %}</ul></div></div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-sm table-hover">
+  <thead><tr><th>Guia</th><th>Data</th><th>Paciente</th><th>Operadora</th><th class="num">Apresentado</th><th class="num">Glosado</th><th>Motivo</th><th>Recurso</th><th></th></tr></thead>
+  <tbody>{% for g in guias %}<tr><td>{{ g.numero_guia }}</td><td>{{ g.data_atendimento|date:"d/m/Y" }}</td><td>{{ g.paciente }}</td><td>{{ g.operadora }}</td>
+    <td class="num">{{ g.valor_total|moeda }}</td><td class="num text-danger">{{ g.valor_glosado|moeda }}</td><td class="small">{{ g.glosa_codigo }} {{ g.glosa_motivo }}</td>
+    <td class="small">{{ g.get_recurso_status_display|default:"-" }}</td><td class="text-end"><a href="{% url 'convenios:guia_editar' g.pk %}" class="btn btn-sm btn-light" title="Recurso de glosa"><i class="bi bi-pencil"></i></a></td></tr>
+  {% empty %}<tr><td colspan="9"><div class="vazio">Nenhuma glosa.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

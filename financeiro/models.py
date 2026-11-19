@@ -72,6 +72,10 @@ class Lancamento(ClinicaModel):
     conta = models.ForeignKey(ContaBancaria, on_delete=models.SET_NULL, null=True, blank=True,
                               verbose_name='Conta bancária')
     conciliado = models.BooleanField(default=False, editable=False)
+    caixa = models.ForeignKey('Caixa', on_delete=models.SET_NULL, null=True, blank=True, related_name='movimentos',
+                              editable=False)
+    orcamento = models.ForeignKey('Orcamento', on_delete=models.SET_NULL, null=True, blank=True, related_name='lancamentos',
+                                  editable=False)
     fornecedor = models.CharField('Fornecedor / favorecido', max_length=150, blank=True)
     documento = models.CharField('Nº documento', max_length=50, blank=True)
     observacoes = models.TextField('Observações', blank=True)
@@ -146,3 +150,89 @@ class TransacaoBancaria(ClinicaModel):
     @property
     def conciliada(self):
         return self.lancamento_id is not None
+
+
+class Caixa(ClinicaModel):
+    """Caixa diário por usuário: abertura, movimentos (baixas feitas com o caixa aberto) e fechamento."""
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='caixas')
+    aberto_em = models.DateTimeField(default=timezone.now)
+    valor_abertura = models.DecimalField('Troco inicial (R$)', max_digits=12, decimal_places=2, default=0)
+    fechado_em = models.DateTimeField(null=True, blank=True)
+    valor_informado = models.DecimalField('Dinheiro contado no fechamento (R$)', max_digits=12, decimal_places=2,
+                                          null=True, blank=True)
+    observacoes = models.TextField('Observações', blank=True)
+
+    class Meta:
+        ordering = ['-aberto_em']
+
+    def __str__(self):
+        return f'Caixa {self.usuario} {timezone.localtime(self.aberto_em):%d/%m/%Y %H:%M}'
+
+    @property
+    def aberto(self):
+        return self.fechado_em is None
+
+    def resumo(self):
+        movs = self.movimentos.filter(status='pago')
+        formas = dict(FORMAS_PAGAMENTO)
+        por_forma = {}
+        for lan in movs:
+            sinal = 1 if lan.tipo == 'receita' else -1
+            chave = lan.forma_pagamento or 'outro'
+            por_forma[chave] = por_forma.get(chave, Decimal('0')) + sinal * (lan.valor_pago or lan.valor)
+        dinheiro = por_forma.get('dinheiro', Decimal('0'))
+        esperado = self.valor_abertura + dinheiro
+        return {'por_forma': [(formas.get(k) or 'Outro', v) for k, v in sorted(por_forma.items())],
+                'total': sum(por_forma.values(), Decimal('0')), 'dinheiro_esperado': esperado,
+                'diferenca': (self.valor_informado - esperado) if self.valor_informado is not None else None,
+                'qtd': movs.count()}
+
+    @classmethod
+    def aberto_do_usuario(cls, clinica, usuario):
+        return cls.objects.filter(clinica=clinica, usuario=usuario, fechado_em__isnull=True).first()
+
+
+class Orcamento(ClinicaModel):
+    STATUS = [('aberto', 'Em aberto'), ('aprovado', 'Aprovado'), ('recusado', 'Recusado'), ('expirado', 'Expirado')]
+    paciente = models.ForeignKey(Paciente, on_delete=models.PROTECT, related_name='orcamentos')
+    medico = models.ForeignKey(Medico, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Profissional')
+    data = models.DateField(default=timezone.localdate)
+    validade = models.DateField('Válido até', null=True, blank=True)
+    desconto = models.DecimalField('Desconto (R$)', max_digits=12, decimal_places=2, default=0)
+    parcelas = models.PositiveIntegerField('Parcelas sugeridas', default=1)
+    observacoes = models.TextField('Observações / condições', blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default='aberto')
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+',
+                                   editable=False)
+
+    class Meta:
+        ordering = ['-data', '-id']
+        verbose_name = 'Orçamento'
+
+    def __str__(self):
+        return f'Orçamento {self.pk} - {self.paciente}'
+
+    @property
+    def subtotal(self):
+        return sum((i.total for i in self.itens.all()), Decimal('0'))
+
+    @property
+    def total(self):
+        return max(self.subtotal - (self.desconto or 0), Decimal('0'))
+
+
+class ItemOrcamento(models.Model):
+    orcamento = models.ForeignKey(Orcamento, on_delete=models.CASCADE, related_name='itens')
+    tipo = models.ForeignKey('cadastros.TipoAtendimento', on_delete=models.SET_NULL, null=True, blank=True,
+                             verbose_name='Atendimento / procedimento')
+    descricao = models.CharField('Descrição', max_length=200, blank=True)
+    quantidade = models.PositiveIntegerField(default=1)
+    valor_unitario = models.DecimalField('Valor unitário (R$)', max_digits=12, decimal_places=2, default=0)
+
+    @property
+    def total(self):
+        return (self.valor_unitario or 0) * (self.quantidade or 0)
+
+    @property
+    def nome(self):
+        return self.descricao or (str(self.tipo) if self.tipo else '')

@@ -31,3 +31,4 @@ urlpatterns = [
 urlpatterns += views.PacoteCrud.urls('pacotes')
 urlpatterns += views.BloqueioCrud.urls('bloqueios')
 urlpatterns += views.EsperaCrud.urls('espera')
+urlpatterns += views.RecursoCrud.urls('recursos')

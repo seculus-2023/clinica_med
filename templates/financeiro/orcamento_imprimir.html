@@ -1,0 +1,20 @@
+{% load clinica_tags %}<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Orçamento {{ o.pk }}</title>
+<style>@page { size: A4; margin: 15mm; } body { font-family: "Segoe UI", Arial, sans-serif; max-width: 780px; margin: 20px auto; color: #111; font-size: 13px; }
+.cab { display: flex; justify-content: space-between; border-bottom: 2px solid #139e86; padding-bottom: 8px; } h1 { font-size: 20px; margin: 0; }
+table { width: 100%; border-collapse: collapse; margin: 14px 0; } th, td { border-bottom: 1px solid #ccc; padding: 6px; text-align: left; } td.n, th.n { text-align: right; }
+.tot td { font-weight: bold; border-bottom: 0; } .muted { color: #555; font-size: 12px; } .no-print { text-align: right; } @media print { .no-print { display: none; } }</style></head>
+<body><div class="no-print"><button onclick="print()">Imprimir / salvar PDF</button></div>
+<div class="cab"><div><h1>{{ c.nome }}</h1><div class="muted">{% if c.cnpj %}CNPJ {{ c.cnpj }} · {% endif %}{{ c.endereco }} {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %} · {{ c.telefone }}</div></div>
+  <div style="text-align: right;"><b>ORÇAMENTO Nº {{ o.pk }}</b><div class="muted">Emitido em {{ o.data|date:"d/m/Y" }}{% if o.validade %} · válido até {{ o.validade|date:"d/m/Y" }}{% endif %}</div></div></div>
+<p><b>Paciente:</b> {{ o.paciente.nome }}{% if o.paciente.cpf %} · CPF {{ o.paciente.cpf }}{% endif %}{% if o.medico %}<br><b>Profissional:</b> {{ o.medico }} {{ o.medico.registro_completo }}{% endif %}</p>
+<table><thead><tr><th>Descrição</th><th class="n">Qtd.</th><th class="n">Valor unit.</th><th class="n">Total</th></tr></thead><tbody>
+{% for i in o.itens.all %}<tr><td>{{ i.nome }}</td><td class="n">{{ i.quantidade }}</td><td class="n">{{ i.valor_unitario|moeda }}</td><td class="n">{{ i.total|moeda }}</td></tr>{% endfor %}
+<tr class="tot"><td colspan="3" class="n">Subtotal</td><td class="n">{{ o.subtotal|moeda }}</td></tr>
+{% if o.desconto %}<tr class="tot"><td colspan="3" class="n">Desconto</td><td class="n">- {{ o.desconto|moeda }}</td></tr>{% endif %}
+<tr class="tot"><td colspan="3" class="n">TOTAL</td><td class="n" style="font-size: 16px;">{{ o.total|moeda }}</td></tr></tbody></table>
+<p class="muted">Valor por extenso: {{ extenso }}.{% if o.parcelas > 1 %} Condição sugerida: {{ o.parcelas }} parcelas.{% endif %}</p>
+{% if o.observacoes %}<p><b>Observações:</b><br>{{ o.observacoes|linebreaksbr }}</p>{% endif %}
+<div style="display: flex; justify-content: space-around; margin-top: 60px; text-align: center;"><div><div style="border-top: 1px solid #111; width: 240px;"></div>{{ c.nome }}</div>
+  <div><div style="border-top: 1px solid #111; width: 240px;"></div>De acordo — {{ o.paciente.nome }}</div></div>
+</body></html>

@@ -13,8 +13,9 @@
 {% if info %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span><i class="bi {{ info.2 }}"></i> {{ info.1 }} — {{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }} · {{ linhas|length }} linha(s)</span>
-    <span class="no-print d-flex gap-2"><a href="?{{ params }}&formato=csv" class="btn btn-sm btn-outline-primary"><i class="bi bi-filetype-csv"></i> Exportar CSV</a>
-      <button class="btn btn-sm btn-light" onclick="print()"><i class="bi bi-printer"></i> Imprimir</button></span></div>
+    <span class="no-print d-flex gap-2"><a href="?{{ params }}&formato=xlsx" class="btn btn-sm btn-success"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+      <a href="?{{ params }}&formato=csv" class="btn btn-sm btn-outline-primary"><i class="bi bi-filetype-csv"></i> CSV</a>
+      <button class="btn btn-sm btn-outline-danger" onclick="print()" title="Escolha &quot;Salvar como PDF&quot; na impressão"><i class="bi bi-file-earmark-pdf"></i> PDF / imprimir</button></span></div>
   <div class="table-responsive"><table class="table table-sm table-hover mb-0">
     <thead><tr>{% for c in cab %}<th>{{ c }}</th>{% endfor %}</tr></thead>
     <tbody>{% for l in linhas %}<tr>{% for v in l %}<td>{{ v }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ cab|length }}"><div class="vazio">Sem dados no período.</div></td></tr>{% endfor %}</tbody>

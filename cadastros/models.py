@@ -3,6 +3,7 @@ import datetime
 from django.conf import settings
 from django.db import models
 
+from clinica.armazenamento import privado
 from contas.models import ClinicaModel
 
 UFS = [(u, u) for u in 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split()]
@@ -24,6 +25,13 @@ class Medico(ClinicaModel):
     nome = models.CharField(max_length=150)
     conselho = models.CharField('Conselho', max_length=10, default='CRM')
     registro = models.CharField('Nº registro', max_length=20, blank=True)
+    cpf = models.CharField('CPF', max_length=14, blank=True, help_text='Aparece na certificação dos documentos assinados.')
+    cbo = models.CharField('CBO-S', max_length=6, blank=True,
+                           help_text='Ocupação (TISS). Ex.: 225125 clínico geral, 225120 cardiologista, 223605 fisioterapeuta.')
+    assinatura = models.ImageField(
+        'Assinatura', upload_to='assinaturas/', storage=privado, blank=True, null=True,
+        help_text='Imagem da assinatura (PNG com fundo transparente de preferência) ou desenhe abaixo. '
+                  'Só o próprio médico pode usá-la para assinar documentos.')
     uf_registro = models.CharField('UF', max_length=2, choices=UFS, blank=True)
     especialidades = models.ManyToManyField(Especialidade, blank=True, related_name='medicos')
     celular = models.CharField('Celular / WhatsApp', max_length=20, blank=True)
@@ -74,8 +82,14 @@ class Paciente(ClinicaModel):
     bairro = models.CharField(max_length=100, blank=True)
     cidade = models.CharField(max_length=100, blank=True)
     uf = models.CharField('UF', max_length=2, choices=UFS, blank=True)
-    convenio = models.CharField('Convênio', max_length=100, blank=True)
+    operadora = models.ForeignKey('convenios.Operadora', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='pacientes', verbose_name='Convênio (operadora)')
+    plano = models.ForeignKey('convenios.Plano', on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name='pacientes')
+    convenio = models.CharField('Convênio (texto)', max_length=100, blank=True,
+                                help_text='Preenchido automaticamente com a operadora; use só se o convênio não estiver cadastrado.')
     carteirinha = models.CharField('Nº carteirinha', max_length=50, blank=True)
+    validade_carteirinha = models.DateField('Validade da carteirinha', null=True, blank=True)
     responsavel = models.CharField('Responsável', max_length=150, blank=True)
     alergias = models.TextField(blank=True)
     observacoes = models.TextField('Observações', blank=True)
@@ -95,6 +109,16 @@ class Paciente(ClinicaModel):
 
     def __str__(self):
         return self.nome
+
+    def save(self, *args, **kwargs):
+        if self.operadora_id:
+            self.convenio = self.operadora.nome[:100]
+        super().save(*args, **kwargs)
+
+    @property
+    def carteirinha_vencida(self):
+        from django.utils import timezone
+        return bool(self.validade_carteirinha and self.validade_carteirinha < timezone.localdate())
 
     @property
     def idade(self):
@@ -201,7 +225,7 @@ class Cid(models.Model):
     versao = models.CharField('Versão', max_length=2, choices=VERSOES, default='10')
     codigo = models.CharField('Código', max_length=20)
     nome = models.CharField('Descrição', max_length=300)
-    categoria = models.CharField(max_length=3, blank=True, db_index=True)
+    categoria = models.CharField(max_length=10, blank=True, db_index=True)
     sexo = models.CharField('Restrição de sexo', max_length=1, blank=True, help_text='M, F ou vazio')
     subcategoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
@@ -272,6 +296,8 @@ class TipoAtendimento(ClinicaModel):
     permite_pacote = models.BooleanField('Permite venda em pacote de sessões', default=False)
     agendamento_online = models.BooleanField('Disponível no agendamento online', default=False)
     teleconsulta = models.BooleanField('É teleconsulta (gera sala de vídeo)', default=False)
+    recurso = models.ForeignKey('agenda.Recurso', on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='+', verbose_name='Sala / equipamento necessário')
     retorno_dias = models.PositiveIntegerField('Retorno sugerido (dias)', null=True, blank=True)
     ativo = models.BooleanField(default=True)
 

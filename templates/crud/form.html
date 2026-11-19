@@ -11,7 +11,7 @@
     {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
     <div class="row g-3">
       {% for f in form %}
-        {% if f.widget_type == 'textarea' or f.widget_type == 'checkboxselectmultiple' %}{% include "_campo.html" with col="col-12" %}
+        {% if f.widget_type == 'textarea' or f.widget_type == 'checkboxselectmultiple' or f.widget_type == 'assinatura' %}{% include "_campo.html" with col="col-12" %}
         {% else %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endif %}
       {% endfor %}
     </div>

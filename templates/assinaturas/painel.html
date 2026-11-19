@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Planos e faturas (SaaS){% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-cash-stack"></i>Venda do sistema (SaaS)</h1>
+  <p>{% if ativo %}<span class="badge text-bg-success">SAAS_ATIVO=1</span> planos, limites, faturas e bloqueio ativos.{% else %}<span class="badge text-bg-secondary">SAAS_ATIVO=0</span> desativado: nada é cobrado nem bloqueado (ative no .env).{% endif %}</p></div>
+  <div class="d-flex gap-2"><a href="{% url 'assinaturas:plano_novo' %}" class="btn btn-outline-primary"><i class="bi bi-plus-lg"></i> Plano</a>
+    <form method="post" action="{% url 'assinaturas:acao' %}">{% csrf_token %}<button name="acao" value="gerar" class="btn btn-primary"><i class="bi bi-receipt"></i> Gerar faturas do mês</button></form>
+    <a href="{% url 'assinaturas:cadastro' %}" target="_blank" class="btn btn-light border" title="Página pública de cadastro (SAAS_CADASTRO_ABERTO=1)"><i class="bi bi-globe"></i></a></div></div>
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-graph-up"></i></div><div><div class="v">{{ mrr|moeda }}</div><div class="l">Receita recorrente mensal (ativas)</div></div></div></div>
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-hourglass-split"></i></div><div><div class="v">{{ pend|moeda }}</div><div class="l">Faturas em aberto</div></div></div></div>
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-buildings"></i></div><div><div class="v">{{ assinaturas|length }}</div><div class="l">Clínicas assinantes</div></div></div></div>
+</div>
+<div class="card mb-3"><div class="card-header">Planos</div><div class="table-responsive"><table class="table table-sm mb-0">
+  <thead><tr><th>Plano</th><th class="num">Mensal</th><th>Usuários</th><th>Profissionais</th><th>Teste</th><th>Público</th><th></th></tr></thead>
+  <tbody>{% for p in planos %}<tr><td>{{ p.nome }}</td><td class="num">{{ p.preco_mensal|moeda }}</td><td>{{ p.max_usuarios|default:"∞" }}</td><td>{{ p.max_medicos|default:"∞" }}</td><td>{{ p.dias_teste }} dias</td><td>{{ p.publico|yesno:"Sim,Não" }}</td>
+    <td class="text-end"><a href="{% url 'assinaturas:plano_editar' p.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a></td></tr>{% empty %}<tr><td colspan="7" class="small text-muted p-3">Crie o primeiro plano.</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card mb-3"><div class="card-header">Assinaturas</div><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+  <thead><tr><th>Clínica</th><th>Plano</th><th>Status</th><th>Dia venc.</th><th>Teste até</th><th></th></tr></thead>
+  <tbody>{% for a in assinaturas %}<tr>
+    <td class="fw-semibold">{{ a.clinica }}{% if a.bloqueada %} <span class="badge text-bg-danger">bloqueada</span>{% endif %}</td>
+    <td><select name="plano" form="fa{{ a.pk }}" class="form-select form-select-sm" aria-label="Plano">{% for p in planos %}<option value="{{ p.pk }}" {% if p.pk == a.plano_id %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}</select></td>
+    <td><select name="status" form="fa{{ a.pk }}" class="form-select form-select-sm" aria-label="Status">{% for v, r in status %}<option value="{{ v }}" {% if v == a.status %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></td>
+    <td><input name="dia_vencimento" form="fa{{ a.pk }}" value="{{ a.dia_vencimento }}" class="form-control form-control-sm" style="width: 70px;" aria-label="Dia"></td><td>{{ a.teste_ate|date:"d/m/Y"|default:"-" }}</td>
+    <td class="text-end"><form method="post" action="{% url 'assinaturas:acao' %}" id="fa{{ a.pk }}">{% csrf_token %}<input type="hidden" name="acao" value="atualizar"><input type="hidden" name="assinatura" value="{{ a.pk }}"><button class="btn btn-sm btn-light" title="Salvar"><i class="bi bi-check2"></i></button></form></td></tr>{% endfor %}
+  {% for c in sem %}<tr><td>{{ c }} <span class="small text-muted">(sem assinatura)</span></td>
+    <td colspan="4"><select name="plano" form="fc{{ c.pk }}" class="form-select form-select-sm" aria-label="Plano">{% for p in planos %}<option value="{{ p.pk }}">{{ p.nome }}</option>{% endfor %}</select></td>
+    <td class="text-end">{% if planos %}<form method="post" action="{% url 'assinaturas:acao' %}" id="fc{{ c.pk }}">{% csrf_token %}<input type="hidden" name="acao" value="criar"><input type="hidden" name="clinica" value="{{ c.pk }}"><button class="btn btn-sm btn-outline-primary">Vincular</button></form>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div></div>
+<div class="card"><div class="card-header">Faturas em aberto</div><div class="table-responsive"><table class="table table-sm mb-0">
+  <tbody>{% for f in faturas %}<tr><td>{{ f.assinatura.clinica }}</td><td>{{ f.competencia }}</td><td>{{ f.vencimento|date:"d/m/Y" }}{% if f.atrasada %} <span class="badge text-bg-danger">atrasada</span>{% endif %}</td><td class="num">{{ f.valor|moeda }}</td>
+    <td class="text-end text-nowrap"><form method="post" action="{% url 'assinaturas:acao' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="fatura" value="{{ f.pk }}">
+      <button name="acao" value="pagar" class="btn btn-sm btn-success">Marcar paga</button> <button name="acao" value="cancelar_fatura" class="btn btn-sm btn-light">Cancelar</button></form></td></tr>
+  {% empty %}<tr><td class="small text-muted p-3">Nenhuma fatura em aberto.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,43 @@
+<div class="assinatura-widget border rounded p-2" data-assinatura>
+  <div class="d-flex flex-wrap gap-3 align-items-start">
+    <div>
+      <div class="small text-muted mb-1">Assinatura atual</div>
+      {% if widget.is_initial and widget.url_preview %}
+        <img src="{{ widget.url_preview }}" alt="Assinatura cadastrada" style="max-height: 80px; max-width: 240px; background: #fff;" class="border rounded p-1">
+        <div class="form-check mt-1"><input type="checkbox" class="form-check-input" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}">
+          <label class="form-check-label small" for="{{ widget.checkbox_id }}">Remover assinatura</label></div>
+      {% else %}<div class="small text-muted fst-italic">Nenhuma cadastrada</div>{% endif %}
+    </div>
+    <div class="flex-grow-1" style="min-width: 260px;">
+      <div class="small text-muted mb-1">Enviar imagem (PNG/JPG)</div>
+      <input type="file" name="{{ widget.name }}" accept="image/png,image/jpeg,image/webp" class="form-control form-control-sm"{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
+      <div class="small text-muted mt-2 mb-1">…ou desenhe aqui (mouse, dedo ou caneta)</div>
+      <canvas data-pad width="600" height="180" style="width: 100%; max-width: 420px; height: 126px; border: 1px dashed #aac4d8; border-radius: 6px; background: #fff; touch-action: none; cursor: crosshair;"></canvas>
+      <div class="d-flex gap-2 mt-1"><button type="button" class="btn btn-sm btn-light border" data-limpar><i class="bi bi-eraser"></i> Limpar desenho</button>
+        <span class="small text-muted align-self-center" data-info></span></div>
+      <input type="hidden" name="assinatura_desenho" data-saida>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var box = document.currentScript.previousElementSibling, pad = box.querySelector('[data-pad]'), ctx = pad.getContext('2d');
+  var saida = box.querySelector('[data-saida]'), info = box.querySelector('[data-info]'), desenhou = false, ativo = false;
+  ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b2a6b';
+  function pt(e) { var r = pad.getBoundingClientRect(); return [(e.clientX - r.left) * pad.width / r.width, (e.clientY - r.top) * pad.height / r.height]; }
+  pad.addEventListener('pointerdown', function (e) { ativo = true; pad.setPointerCapture(e.pointerId); var p = pt(e); ctx.beginPath(); ctx.moveTo(p[0], p[1]); });
+  pad.addEventListener('pointermove', function (e) { if (!ativo) return; var p = pt(e); ctx.lineTo(p[0], p[1]); ctx.stroke(); desenhou = true; });
+  function fim() { if (!ativo) return; ativo = false; if (desenhou) { saida.value = recortar(); info.textContent = 'Desenho será salvo como assinatura.'; } }
+  pad.addEventListener('pointerup', fim); pad.addEventListener('pointercancel', fim);
+  box.querySelector('[data-limpar]').addEventListener('click', function () { ctx.clearRect(0, 0, pad.width, pad.height); desenhou = false; saida.value = ''; info.textContent = ''; });
+  function recortar() {   /* remove margens vazias e mantém fundo transparente */
+    var d = ctx.getImageData(0, 0, pad.width, pad.height).data, x0 = pad.width, y0 = pad.height, x1 = 0, y1 = 0;
+    for (var y = 0; y < pad.height; y++) for (var x = 0; x < pad.width; x++) if (d[(y * pad.width + x) * 4 + 3] > 0) {
+      if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+    var m = 8; x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(pad.width, x1 + m); y1 = Math.min(pad.height, y1 + m);
+    var c = document.createElement('canvas'); c.width = x1 - x0; c.height = y1 - y0;
+    c.getContext('2d').drawImage(pad, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+    return c.toDataURL('image/png');
+  }
+})();
+</script>

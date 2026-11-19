@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 
 from cadastros.models import Medicamento, Medico, Paciente
+from clinica.armazenamento import privado
 from contas.models import ClinicaModel
 
 TIPOS = [
@@ -17,6 +18,20 @@ TIPOS = [
     ('orientacoes', 'Orientações ao paciente'),
     ('outro', 'Outro documento'),
 ]
+
+def gerar_codigo():
+    """Código de verificação aleatório no formato XXXX-XXXX-XXXX-XXXX."""
+    import secrets
+    h = secrets.token_hex(8).upper()
+    return '-'.join(h[i:i + 4] for i in range(0, 16, 4))
+
+
+def url_verificacao(codigo=''):
+    from django.conf import settings
+    from django.urls import reverse
+    base = settings.SITE_URL + reverse('documentos:verificar')
+    return f'{base}?codigo={codigo}' if codigo else base
+
 
 PLACEHOLDERS = ['{paciente}', '{cpf}', '{idade}', '{data}', '{hora}', '{medico}', '{registro}', '{clinica}',
                 '{dias}', '{cid}', '{data_atendimento}', '{hora_inicio}', '{hora_fim}']
@@ -51,9 +66,17 @@ class Documento(ClinicaModel):
     cid = models.CharField('CID', max_length=20, blank=True)
     dias = models.PositiveIntegerField('Dias de afastamento', null=True, blank=True)
     codigo = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    codigo_verificacao = models.CharField('Código de verificação', max_length=19, blank=True, db_index=True,
+                                          editable=False)
+    visivel_paciente = models.BooleanField('Disponível no portal do paciente', default=True)
 
     class Meta:
         ordering = ['-data']
+
+    def save(self, *args, **kwargs):
+        if not self.codigo_verificacao:
+            self.codigo_verificacao = gerar_codigo()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.get_tipo_display()} - {self.paciente}'
@@ -102,3 +125,29 @@ class ItemPrescricao(models.Model):
     @property
     def nome(self):
         return self.descricao or (str(self.medicamento) if self.medicamento else '')
+
+
+class DocumentoAssinado(ClinicaModel):
+    """PDF assinado eletronicamente na tela 'Assinar documento' (imagem da assinatura + certificação lateral)."""
+    medico = models.ForeignKey(Medico, on_delete=models.PROTECT, related_name='documentos_assinados',
+                               verbose_name='Assinado por')
+    paciente = models.ForeignKey(Paciente, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='documentos_assinados')
+    nome_arquivo = models.CharField('Documento', max_length=200)
+    arquivo = models.FileField(upload_to='assinados/%Y/%m/', storage=privado)
+    codigo = models.CharField('Código de verificação', max_length=19, unique=True)
+    sha256 = models.CharField('Hash SHA-256 do PDF assinado', max_length=64)
+    sha256_original = models.CharField('Hash SHA-256 do original', max_length=64, blank=True)
+    paginas = models.PositiveIntegerField(default=1)
+    assinado_em = models.DateTimeField()
+    usuario = models.ForeignKey('contas.Usuario', on_delete=models.SET_NULL, null=True, related_name='+')
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    anexo = models.ForeignKey('prontuario.Anexo', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    class Meta:
+        ordering = ['-assinado_em']
+        verbose_name = 'Documento assinado'
+        verbose_name_plural = 'Documentos assinados'
+
+    def __str__(self):
+        return f'{self.nome_arquivo} ({self.codigo})'

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>{{ t.titulo }}</title>
+<style>@page { size: A4; margin: 16mm; } body { font-family: "Segoe UI", Arial, sans-serif; max-width: 780px; margin: 20px auto; color: #111; font-size: 14px; }
+.cab { border-bottom: 2px solid #139e86; padding-bottom: 8px; } h1 { font-size: 19px; margin: 0; } h2 { text-align: center; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0; }
+pre { white-space: pre-wrap; font-family: inherit; line-height: 1.7; } .assin { margin-top: 30px; text-align: center; } .assin img { max-height: 90px; max-width: 340px; }
+.assin .l { border-top: 1px solid #111; width: 340px; margin: 0 auto 4px; } .muted { color: #555; font-size: 11px; } .no-print { text-align: right; } @media print { .no-print { display: none; } }</style></head>
+<body><div class="no-print"><button onclick="print()">Imprimir / salvar PDF</button> <a href="{% url 'prontuario:paciente' t.paciente_id %}">voltar ao prontuário</a></div>
+<div class="cab"><h1>{{ c.nome }}</h1><div class="muted">{% if c.cnpj %}CNPJ {{ c.cnpj }} · {% endif %}{{ c.endereco }} {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}</div></div>
+<h2>{{ t.titulo }}</h2>
+<pre>{{ t.texto }}</pre>
+<div class="assin"><img src="{% url 'prontuario:termo_assinatura' t.pk %}" alt="Assinatura"><div class="l"></div>
+  <b>{{ t.assinante_nome }}</b>{% if t.assinante_documento %} — {{ t.assinante_documento }}{% endif %}<br><span class="muted">{{ t.assinante_relacao }}{% if t.assinante_relacao != 'Próprio paciente' %} de {{ t.paciente.nome }}{% endif %}</span></div>
+{% if t.medico %}<div class="assin" style="margin-top: 40px;"><div class="l"></div><b>{{ t.medico.nome }}</b> — {{ t.medico.registro_completo }}</div>{% endif %}
+<p class="muted" style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 6px;">Assinado eletronicamente na tela em {{ t.assinado_em|date:"d/m/Y H:i:s" }}{% if t.ip %} (IP {{ t.ip }}){% endif %}.
+  Código de verificação <b>{{ t.codigo_verificacao }}</b> — confira em {{ url_verificacao }}. Integridade (SHA-256): {{ t.sha256 }}</p>
+</body></html>

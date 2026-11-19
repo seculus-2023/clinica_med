@@ -22,17 +22,59 @@ class PacienteForm(ClinicaModelForm):
         exclude = []
 
 
+class AssinaturaWidget(forms.ClearableFileInput):
+    template_name = 'widgets/assinatura.html'
+    url_preview = ''
+
+    def get_context(self, name, value, attrs):
+        ctx = super().get_context(name, value, attrs)
+        ctx['widget']['url_preview'] = self.url_preview
+        return ctx
+
+
 class MedicoForm(ClinicaModelForm):
+    assinatura_desenho = forms.CharField(required=False, widget=forms.HiddenInput)
+
     class Meta:
         model = Medico
         exclude = []
         widgets = {'cor': forms.TextInput(attrs={'type': 'color'}),
-                   'especialidades': forms.CheckboxSelectMultiple}
+                   'especialidades': forms.CheckboxSelectMultiple, 'assinatura': AssinaturaWidget}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['usuario'].queryset = Usuario.objects.filter(vinculos__clinica=self.clinica).distinct()
         self.fields['cor'].widget.attrs['class'] = 'form-control form-control-color'
+        if self.instance.pk and self.instance.assinatura:
+            from django.urls import reverse
+            self.fields['assinatura'].widget.url_preview = reverse('documentos:medico_assinatura',
+                                                                   args=[self.instance.pk])
+        self.fields['assinatura_desenho'].label = ''
+
+    def clean_assinatura(self):
+        f = self.cleaned_data.get('assinatura')
+        if f and hasattr(f, 'size') and f.size > 2 * 1024 * 1024:
+            raise forms.ValidationError('Imagem da assinatura maior que 2 MB.')
+        return f
+
+    def clean_assinatura_desenho(self):
+        v = self.cleaned_data.get('assinatura_desenho') or ''
+        if v and (not v.startswith('data:image/png;base64,') or len(v) > 3_000_000):
+            raise forms.ValidationError('Desenho de assinatura inválido.')
+        return v
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        desenho = self.cleaned_data.get('assinatura_desenho')
+        if desenho:
+            import base64
+            from django.core.files.base import ContentFile
+            obj.assinatura.save(f'assinatura_{obj.pk or "nova"}.png',
+                                ContentFile(base64.b64decode(desenho.split(',', 1)[1])), save=False)
+        if commit:
+            obj.save()
+            self.save_m2m()
+        return obj
 
 
 class EspecialidadeForm(ClinicaModelForm):
@@ -111,6 +153,15 @@ class PacienteCrud(Crud):
 
 
 class MedicoCrud(Crud):
+    @classmethod
+    def antes_salvar(cls, request, obj, form):
+        from django.conf import settings
+        if not obj.pk and settings.SAAS_ATIVO and not request.user.is_superuser:
+            a = getattr(request.clinica, 'assinatura', None)
+            if a and a.limite_atingido('medicos'):
+                from django.core.exceptions import PermissionDenied
+                raise PermissionDenied('Limite de profissionais do plano atingido.')
+
     model, form_class = Medico, MedicoForm
     nome, nome_plural, url, icone = 'Médico', 'Médicos / Profissionais', 'cadastros:medico', 'bi-person-badge'
     colunas = [('nome', 'Nome'), ('registro_completo', 'Registro'), ('especialidades', 'Especialidades'),
@@ -398,3 +449,13 @@ def api_verificar_prescricao(request):
     interacoes = [a for a in verificar(todos) if not (a['a'].endswith('(uso contínuo)') and
                                                        a['b'].endswith('(uso contínuo)'))]
     return JsonResponse({'alergias': alergias, 'conflitos_alergia': conflitos, 'interacoes': interacoes})
+
+
+@acesso(None)
+def api_pacientes(request):
+    q = request.GET.get('q', '').strip()
+    qs = Paciente.objects.filter(clinica=request.clinica, ativo=True)
+    for t in _termos(q):
+        qs = qs.filter(Q(nome__icontains=t) | Q(cpf__icontains=t) | Q(celular__icontains=t))
+    return JsonResponse([{'id': p.pk, 'texto': p.nome, 'valor': p.nome,
+                          'extra': ' · '.join(x for x in [p.cpf, p.celular] if x)} for p in qs[:20]], safe=False)

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Guias TISS{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-file-earmark-medical"></i>Guias TISS</h1><p>Geradas automaticamente ao concluir atendimentos por convênio.</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'convenios:lotes' %}" class="btn btn-primary"><i class="bi bi-box-seam"></i> Lotes / faturamento</a>
+    <a href="{% url 'convenios:glosas' %}" class="btn btn-outline-danger"><i class="bi bi-exclamation-octagon"></i> Glosas</a>
+    {% if pode_editar %}<a href="{% url 'convenios:guia_nova' %}" class="btn btn-light border"><i class="bi bi-plus-lg"></i> Guia avulsa</a>{% endif %}
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-receipt"></i></div><div><div class="v">{{ tot.v|moeda }}</div><div class="l">Valor apresentado</div></div></div></div>
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-cash"></i></div><div><div class="v">{{ tot.p|moeda }}</div><div class="l">Valor pago</div></div></div></div>
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-red"><i class="bi bi-exclamation-octagon"></i></div><div><div class="v">{{ tot.g|moeda }}</div><div class="l">Glosado</div></div></div></div>
+</div>
+<form class="filtros mb-3">
+  <input type="search" name="q" value="{{ f.q }}" class="form-control" style="max-width: 260px;" placeholder="Paciente, nº guia, carteira">
+  <select name="operadora" class="form-select" style="max-width: 220px;" aria-label="Operadora"><option value="">Todas as operadoras</option>{% for o in operadoras %}<option value="{{ o.pk }}" {% if f.operadora == o.pk|stringformat:'s' %}selected{% endif %}>{{ o }}</option>{% endfor %}</select>
+  <select name="status" class="form-select" style="max-width: 200px;" aria-label="Status"><option value="">Todos os status</option>{% for v, r in status %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+  <button class="btn btn-light">Filtrar</button>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-sm table-hover">
+  <thead><tr><th>Guia</th><th>Atendimento</th><th>Paciente</th><th>Operadora</th><th>Tipo</th><th>Procedimento</th><th class="num">Valor</th><th class="num">Glosa</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for g in guias %}
+    <tr><td class="fw-semibold">{{ g.numero_guia }}</td><td>{{ g.data_atendimento|date:"d/m/Y" }}</td><td>{{ g.paciente }}<div class="small text-muted">{{ g.carteirinha|default:"sem carteira" }}</div></td>
+      <td>{{ g.operadora }}</td><td class="small">{{ g.get_tipo_display }}</td><td class="small">{{ g.codigo_procedimento }} {{ g.descricao_procedimento|truncatechars:30 }}</td>
+      <td class="num">{{ g.valor_total|moeda }}</td><td class="num {% if g.valor_glosado %}text-danger{% endif %}">{% if g.valor_glosado %}{{ g.valor_glosado|moeda }}{% else %}-{% endif %}</td>
+      <td><span class="badge {% if g.status == 'paga' %}text-bg-success{% elif 'glosa' in g.status %}text-bg-danger{% elif g.status == 'aberta' %}text-bg-warning{% else %}text-bg-light border{% endif %}">{{ g.get_status_display }}</span>{% if g.lote %} <a href="{% url 'convenios:lote' g.lote_id %}" class="small">lote {{ g.lote.numero }}</a>{% endif %}</td>
+      <td class="text-end text-nowrap"><a href="{% url 'convenios:guia_imprimir' g.pk %}" target="_blank" class="btn btn-sm btn-light" title="Imprimir"><i class="bi bi-printer"></i></a>
+        {% if pode_editar %}<a href="{% url 'convenios:guia_editar' g.pk %}" class="btn btn-sm btn-light" title="Editar"><i class="bi bi-pencil"></i></a>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="10"><div class="vazio">Nenhuma guia.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

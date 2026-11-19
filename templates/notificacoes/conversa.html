@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}Conversa {{ tel }}{% endblock %}
+{% block head %}<style>
+  .fio { max-height: 62vh; overflow-y: auto; background: #efeae2; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: .4rem; }
+  .bal { max-width: 75%; padding: .45rem .7rem; border-radius: 10px; font-size: .9rem; white-space: pre-line; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+  .bal.in { background: #fff; align-self: flex-start; } .bal.out { background: #d9fdd3; align-self: flex-end; }
+  .bal .h { font-size: .68rem; color: #667; text-align: right; margin-top: 2px; }
+</style>{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-whatsapp text-success"></i>{{ paciente|default:tel }}</h1><p>{{ tel }}{% if paciente %} · <a href="{% url 'cadastros:paciente_ficha' paciente.pk %}">ficha do paciente</a>{% endif %}</p></div>
+  <div class="d-flex gap-2">{% if paciente and perm.agenda == 'editar' %}<a href="{% url 'agenda:marcar' %}?paciente={{ paciente.pk }}" class="btn btn-outline-primary"><i class="bi bi-calendar-plus"></i> Marcar consulta</a>{% endif %}
+    <a href="{% url 'notificacoes:conversas' %}" class="btn btn-light border"><i class="bi bi-arrow-left"></i></a></div></div>
+<div class="fio mb-3" id="fio">
+  {% for d, quando, m in fio %}
+  <div class="bal {{ d }}">{% if d == 'in' %}{{ m.texto }}{% if m.acao %}<div class="small fst-italic text-success">↳ ação automática: {{ m.acao }}</div>{% endif %}{% else %}{{ m.mensagem }}{% endif %}
+    <div class="h">{{ quando|date:"d/m H:i" }}{% if d == 'out' %} · {{ m.get_status_display }}{% endif %}</div></div>
+  {% empty %}<div class="text-center text-muted small">Sem mensagens.</div>{% endfor %}
+</div>
+{% if pode_responder %}<form method="post" class="d-flex gap-2">{% csrf_token %}
+  <textarea name="texto" class="form-control" rows="2" placeholder="Digite a resposta..." required aria-label="Mensagem"></textarea>
+  <button class="btn btn-success"><i class="bi bi-send"></i></button></form>{% endif %}
+{% endblock %}
+{% block scripts %}<script>var f = document.getElementById('fio'); f.scrollTop = f.scrollHeight;</script>{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Curvas de crescimento{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-graph-up"></i>Curvas de crescimento (referência)</h1><p>Importe as tabelas oficiais da OMS para desenhar os percentis no gráfico de crescimento das crianças.</p></div></div>
+<div class="row g-3">
+  <div class="col-lg-6"><form method="post" enctype="multipart/form-data" class="card" novalidate>{% csrf_token %}<div class="card-body">
+    {% include "_campo.html" with f=form.arquivo col="" %}</div>
+    <div class="card-footer bg-transparent text-end"><button class="btn btn-primary"><i class="bi bi-upload"></i> Importar</button></div></form></div>
+  <div class="col-lg-6"><div class="card mb-3"><div class="card-header">Como obter</div><div class="card-body small">
+    <p>No site da OMS (<b>who.int › Child growth standards</b>, 0–5 anos, e <b>Growth reference 5–19 years</b>) baixe as tabelas de
+      percentis (peso por idade, comprimento/estatura por idade, IMC por idade) por sexo. Monte um CSV com as colunas:</p>
+    <code>sexo;indicador;idade_meses;p3;p15;p50;p85;p97</code>
+    <p class="mt-2 mb-0">Ex.: <code>M;peso;12;...;...;...;...;...</code> com os valores da tabela. Sem a referência, o gráfico mostra apenas as medidas do paciente.</p></div></div>
+    <div class="card"><div class="card-header">Já importado</div><ul class="list-group list-group-flush">
+      {% for r in resumo %}<li class="list-group-item small d-flex justify-content-between"><span>{{ r.sexo }} · {{ r.indicador }}</span><span>{{ r.n }} pontos</span></li>{% empty %}<li class="list-group-item small text-muted">Nada importado.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Lotes a vencer{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-hourglass-bottom"></i>Lotes vencidos e a vencer</h1><p>Entradas com validade nos próximos {{ dias }} dias de produtos com saldo.</p></div>
+  <form class="filtros"><select name="dias" class="form-select" onchange="this.form.submit()" aria-label="Período">
+    <option value="15" {% if dias == 15 %}selected{% endif %}>15 dias</option><option value="30" {% if dias == 30 %}selected{% endif %}>30 dias</option><option value="60" {% if dias == 60 %}selected{% endif %}>60 dias</option><option value="90" {% if dias == 90 %}selected{% endif %}>90 dias</option><option value="180" {% if dias == 180 %}selected{% endif %}>180 dias</option></select></form></div>
+<div class="card"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th>Situação</th><th class="num">Saldo do produto</th><th>Entrada</th><th></th></tr></thead>
+  <tbody>{% for m in lotes %}<tr {% if m.dias < 0 %}class="table-danger"{% elif m.dias <= 30 %}class="table-warning"{% endif %}><td class="fw-semibold">{{ m.produto.nome }}</td><td>{{ m.lote|default:"-" }}</td><td>{{ m.validade|date:"d/m/Y" }}</td>
+    <td>{% if m.dias < 0 %}<span class="badge text-bg-danger">vencido há {{ m.dias_abs }} dia(s)</span>{% else %}vence em {{ m.dias }} dia(s){% endif %}</td>
+    <td class="num">{{ m.produto.saldo }} {{ m.produto.unidade }}</td><td>{{ m.data|date:"d/m/Y" }}</td>
+    <td class="text-end"><a href="{% url 'estoque:produto_kardex' m.produto_id %}" class="btn btn-sm btn-light"><i class="bi bi-clock-history"></i></a></td></tr>
+  {% empty %}<tr><td colspan="7"><div class="vazio"><i class="bi bi-check2-circle"></i>Nenhum lote vencendo no período.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}
