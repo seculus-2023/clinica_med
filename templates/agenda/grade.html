@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titulo %}Grade de horários{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-table"></i>Grade de horários de atendimento</h1><p>Horários semanais de todos os profissionais.</p></div>
+  <div class="d-flex flex-wrap gap-2 no-print">
+    <form><select name="esp" class="form-select" onchange="this.form.submit()" aria-label="Especialidade">
+      <option value="">Todas as especialidades</option>{% for e in especialidades %}<option value="{{ e.pk }}" {% if esp.pk == e.pk %}selected{% endif %}>{{ e.nome }}</option>{% endfor %}</select></form>
+    {% if pode_editar %}<a href="{% url 'cadastros:horario_list' %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Editar horários</a>{% endif %}
+    <a href="{% url 'agenda:marcar' %}" class="btn btn-primary"><i class="bi bi-calendar2-plus"></i> Marcar consulta</a>
+    <button class="btn btn-light border" onclick="print()"><i class="bi bi-printer"></i></button>
+  </div>
+</div>
+<div class="card">{% include "agenda/_grade.html" %}</div>
+{% endblock %}

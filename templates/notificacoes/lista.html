@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}WhatsApp e e-mails{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-whatsapp"></i>WhatsApp e e-mails</h1>
+    <p>Remetente WhatsApp: <b>{{ request.clinica.whatsapp|default:"não cadastrado" }}</b> · provedor: {{ request.clinica.get_whatsapp_provedor_display }}</p></div>
+  {% if perm|edita:'administrativo' %}<div class="d-flex flex-wrap gap-2">
+    <form method="post" action="{% url 'notificacoes:processar' %}">{% csrf_token %}<button class="btn btn-outline-primary"><i class="bi bi-arrow-repeat"></i> Processar lembretes agora</button></form>
+    <a href="{% url 'notificacoes:conexao' %}" class="btn btn-success"><i class="bi bi-qr-code"></i> Conectar WhatsApp</a>
+    <a href="{% url 'contas:configuracoes' %}" class="btn btn-light"><i class="bi bi-gear"></i> Configurar</a></div>{% endif %}
+</div>
+{% if perm|edita:'administrativo' %}
+<form method="post" action="{% url 'notificacoes:testar' %}" class="card mb-3">{% csrf_token %}<div class="card-body filtros">
+  <div><label class="form-label small mb-0" for="tTel">Testar envio para WhatsApp</label><input id="tTel" name="telefone" class="form-control" placeholder="(11) 99999-9999"></div>
+  <div><label class="form-label small mb-0" for="tEmail">e/ou e-mail</label><input id="tEmail" type="email" name="email" class="form-control" placeholder="voce@exemplo.com"></div>
+  <div class="form-check align-self-center"><input class="form-check-input" type="checkbox" name="sms" id="tSms" value="1"><label class="form-check-label small" for="tSms">também SMS</label></div>
+  <button class="btn btn-primary"><i class="bi bi-send"></i> Enviar teste</button></div></form>{% endif %}
+<form class="filtros mb-3">
+  <select name="canal" class="form-select" style="max-width: 200px;" onchange="this.form.submit()" aria-label="Canal"><option value="">Todos os canais</option>{% for v, r in canais %}<option value="{{ v }}" {% if canal_sel == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+  <select name="status" class="form-select" style="max-width: 200px;" onchange="this.form.submit()" aria-label="Status"><option value="">Todos os status</option>{% for v, r in status %}<option value="{{ v }}" {% if status_sel == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-sm table-hover">
+  <thead><tr><th>Data</th><th>Canal</th><th>Evento</th><th>Para</th><th>Mensagem</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for n in notificacoes %}
+    <tr><td class="text-nowrap">{{ n.criado_em|date:"d/m H:i" }}</td><td>{% if n.canal == 'whatsapp' %}<i class="bi bi-whatsapp text-success"></i>{% elif n.canal == 'sms' %}<i class="bi bi-chat-dots text-primary"></i>{% else %}<i class="bi bi-envelope"></i>{% endif %}</td>
+      <td>{{ n.evento }}</td><td>{{ n.nome_destinatario }}<div class="small text-muted">{{ n.destinatario }}</div></td>
+      <td class="small" style="max-width: 380px;">{{ n.mensagem|truncatechars:120 }}</td>
+      <td>{% if n.status == 'enviado' %}<span class="badge text-bg-success">Enviado</span>{% elif n.status == 'erro' %}<span class="badge text-bg-danger" title="{{ n.erro }}">Erro</span>{% elif n.status == 'simulado' %}<span class="badge text-bg-secondary">Simulado</span>{% else %}<span class="badge text-bg-warning">Pendente</span>{% endif %}</td>
+      <td class="text-end text-nowrap">{% if n.status == 'simulado' %}<a href="{{ n.link_wame }}" target="_blank" rel="noopener" class="btn btn-sm btn-success" title="Abrir no WhatsApp"><i class="bi bi-whatsapp"></i></a>{% endif %}
+        {% if n.status == 'erro' and perm|edita:'administrativo' %}<form method="post" action="{% url 'notificacoes:reenviar' n.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-light" title="Reenviar"><i class="bi bi-arrow-repeat"></i></button></form>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7"><div class="vazio">Nenhuma notificação.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

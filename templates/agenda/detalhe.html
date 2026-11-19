@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Agendamento{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-calendar-event"></i>{{ ag.paciente.nome }}</h1>
+    <p>{{ ag.inicio|date:"l, d/m/Y" }} das {{ ag.inicio|time:"H:i" }} às {{ ag.fim|time:"H:i" }} · {{ ag.tipo }} · {{ ag.medico }}</p></div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if pode_editar %}<a href="{% url 'agenda:editar' ag.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Editar / reagendar</a>{% endif %}
+    {% if perm|edita:'prontuario' and ag.ativo %}<a href="{% url 'prontuario:iniciar' ag.pk %}" class="btn btn-primary"><i class="bi bi-journal-medical"></i> Atender (prontuário)</a>{% endif %}
+    <a href="{% url 'agenda:dia' %}?data={{ ag.inicio|date:'Y-m-d' }}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Agenda do dia</a>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <span class="badge-status fs-6" style="background: {{ ag.cor }}">{{ ag.get_status_display }}</span>
+        {% if ag.pacote_id %}<a href="{% url 'agenda:pacote_detalhe' ag.pacote_id %}" class="badge text-bg-light border text-decoration-none">Pacote: sessão {{ ag.numero_sessao }}/{{ ag.pacote.quantidade }}</a>{% endif %}
+        {% if ag.convenio %}<span class="badge text-bg-info">Convênio</span>{% endif %}
+        {% if ag.origem == 'online' %}<span class="badge text-bg-light border"><i class="bi bi-globe"></i> Agendado online</span>{% endif %}
+        {% if ag.checkin_em %}<span class="badge text-bg-success"><i class="bi bi-person-vcard"></i> Check-in {{ ag.checkin_em|date:"d/m H:i" }}</span>{% endif %}
+        {% if ag.teleconsulta %}<a href="{{ ag.sala_video_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-primary"><i class="bi bi-camera-video"></i> Sala de vídeo</a>{% if ag.tele_consentimento_em %}<span class="badge text-bg-success">Termo aceito{% if ag.tele_autoriza_gravacao %} · gravação autorizada{% endif %}</span>{% else %}<span class="badge text-bg-warning">Termo da teleconsulta pendente</span>{% endif %}{% endif %}
+        {% if ag.avaliacao %}<span class="badge text-bg-warning"><i class="bi bi-star-fill"></i> NPS {{ ag.avaliacao.nota }}/10</span>{% endif %}
+        <span class="ms-auto fw-bold">{{ ag.valor|moeda }}</span>
+      </div>
+      {% if pode_editar %}
+      <div class="small text-muted mb-1">Alterar status:</div>
+      <div class="d-flex flex-wrap gap-1">
+        {% for s, rot in status %}{% if s != ag.status %}
+        <form method="post" action="{% url 'agenda:status' ag.pk %}">{% csrf_token %}<input type="hidden" name="status" value="{{ s }}">
+          <button class="btn btn-sm btn-light border" {% if s == 'cancelado' %}onclick="return confirm('Cancelar o agendamento? O paciente será avisado.')"{% endif %}>{{ rot }}</button></form>
+        {% endif %}{% endfor %}
+      </div>{% endif %}
+      <hr>
+      <div class="row small g-2">
+        <div class="col-md-6"><b>Paciente:</b> <a href="{% url 'cadastros:paciente_ficha' ag.paciente_id %}">{{ ag.paciente.nome }}</a></div>
+        <div class="col-md-6"><b>Celular:</b> {{ ag.paciente.celular|default:"-" }} {% if ag.paciente.celular %}<a target="_blank" rel="noopener" href="https://wa.me/{{ ag.paciente.celular|whatsapp_numero }}?text={{ msg_whatsapp|urlencode }}"><i class="bi bi-whatsapp text-success"></i> abrir conversa</a>{% endif %}</div>
+        <div class="col-md-6"><b>E-mail:</b> {{ ag.paciente.email|default:"-" }}</div>
+        <div class="col-md-6"><b>Confirmação:</b> {% if ag.confirmado_em %}{{ ag.confirmado_em|date:"d/m H:i" }} ({{ ag.confirmado_por }}){% else %}pendente{% endif %}</div>
+        <div class="col-md-6"><b>Chegada:</b> {{ ag.chegada_em|date:"d/m H:i"|default:"-" }}</div>
+        <div class="col-md-6"><b>Atendimento:</b> {{ ag.atendimento_inicio|time:"H:i"|default:"-" }} – {{ ag.atendimento_fim|time:"H:i"|default:"-" }}</div>
+        <div class="col-12"><b>Link de confirmação do paciente:</b> <a href="{{ ag.link_confirmacao }}" target="_blank" class="text-break">{{ ag.link_confirmacao }}</a></div>
+        <div class="col-12"><b>Check-in digital (pré-consulta):</b> <a href="{{ ag.link_checkin }}" target="_blank" class="text-break">{{ ag.link_checkin }}</a></div>
+        {% if ag.avaliacao.comentario %}<div class="col-12"><b>Comentário da avaliação:</b> {{ ag.avaliacao.comentario }}</div>{% endif %}
+        {% if ag.observacoes %}<div class="col-12"><b>Observações:</b> {{ ag.observacoes|linebreaksbr }}</div>{% endif %}
+      </div>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-whatsapp text-success"></i> Notificações enviadas</span>
+      {% if pode_editar %}<form method="post" action="{% url 'agenda:reenviar' ag.pk %}" class="d-flex gap-1">{% csrf_token %}
+        <select name="evento" class="form-select form-select-sm" aria-label="Tipo de mensagem"><option value="lembrete">Lembrete</option><option value="agendamento">Agendamento</option><option value="cancelamento">Cancelamento</option></select>
+        <button class="btn btn-sm btn-outline-primary text-nowrap">Enviar agora</button></form>{% endif %}</div>
+      <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>Data</th><th>Canal</th><th>Evento</th><th>Destino</th><th>Status</th></tr></thead>
+        <tbody>{% for n in notificacoes %}<tr><td>{{ n.criado_em|date:"d/m H:i" }}</td><td>{{ n.get_canal_display }}</td><td>{{ n.evento }}</td><td>{{ n.destinatario }}</td>
+          <td>{{ n.get_status_display }}{% if n.status == 'simulado' %} <a href="{{ n.link_wame }}" target="_blank" rel="noopener" class="small">enviar pelo WhatsApp</a>{% endif %}{% if n.erro %} <span class="text-danger small" title="{{ n.erro }}">(erro)</span>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-muted small p-3">Nenhuma notificação.</td></tr>{% endfor %}</tbody></table></div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header">Financeiro</div><div class="card-body small">
+      {% for l in lancamentos %}<div class="d-flex justify-content-between"><a href="{% url 'financeiro:lancamento_editar' l.pk %}">{{ l.descricao|truncatechars:30 }}</a><span>{{ l.valor|moeda }} · {{ l.situacao }}</span></div>
+      {% empty %}<p class="text-muted mb-2">Sem lançamento financeiro.</p>
+        {% if pode_financeiro and ag.valor %}<form method="post" action="{% url 'agenda:lancar' ag.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-cash-coin"></i> Lançar {{ ag.valor|moeda }} no contas a receber</button></form>{% endif %}
+      {% endfor %}
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Documentos</div><div class="card-body small">
+      {% for d in documentos %}<div><a href="{% url 'documentos:imprimir' d.pk %}" target="_blank">{{ d.titulo_exibicao }}</a></div>{% empty %}<p class="text-muted mb-2">Nenhum.</p>{% endfor %}
+      {% if pode_documentos %}<div class="d-flex flex-wrap gap-1 mt-2">
+        <a class="btn btn-sm btn-light border" href="{% url 'documentos:documento_novo' %}?agendamento={{ ag.pk }}&tipo=receita">Receita</a>
+        <a class="btn btn-sm btn-light border" href="{% url 'documentos:documento_novo' %}?agendamento={{ ag.pk }}&tipo=atestado">Atestado</a>
+        <a class="btn btn-sm btn-light border" href="{% url 'documentos:documento_novo' %}?agendamento={{ ag.pk }}&tipo=declaracao">Declaração</a>
+        <a class="btn btn-sm btn-light border" href="{% url 'documentos:documento_novo' %}?agendamento={{ ag.pk }}&tipo=exames">Exames</a></div>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header">Histórico do paciente</div><ul class="list-group list-group-flush">
+      {% for h in historico %}<li class="list-group-item small"><a href="{% url 'agenda:detalhe' h.pk %}">{{ h.inicio|date:"d/m/Y" }}</a> {{ h.tipo }} — <span style="color: {{ h.cor }}">{{ h.get_status_display }}</span></li>{% empty %}<li class="list-group-item small text-muted">Primeiro atendimento.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

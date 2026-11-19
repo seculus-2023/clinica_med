@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titulo %}Busca{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-search"></i>Busca: "{{ q }}"</h1></div>
+<form class="filtros mb-3"><input type="search" name="q" value="{{ q }}" class="form-control" style="max-width: 420px;" autofocus aria-label="Buscar"><button class="btn btn-primary">Buscar</button></form>
+{% if res.pacientes is not None %}<div class="card mb-3"><div class="card-header">Pacientes</div><ul class="list-group list-group-flush">
+  {% for p in res.pacientes %}<li class="list-group-item"><a href="{% url 'cadastros:paciente_ficha' p.pk %}" class="fw-semibold">{{ p.nome }}</a> <span class="small text-muted">{{ p.cpf }} {{ p.celular }}</span></li>{% empty %}<li class="list-group-item text-muted small">Nenhum paciente.</li>{% endfor %}</ul></div>{% endif %}
+{% if res.agendamentos is not None %}<div class="card"><div class="card-header">Agendamentos</div><ul class="list-group list-group-flush">
+  {% for a in res.agendamentos %}<li class="list-group-item small"><a href="{% url 'agenda:detalhe' a.pk %}">{{ a.inicio|date:"d/m/Y H:i" }}</a> — {{ a.paciente }} · {{ a.medico }} · {{ a.get_status_display }}</li>{% empty %}<li class="list-group-item text-muted small">Nenhum agendamento.</li>{% endfor %}</ul></div>{% endif %}
+{% if not res %}<div class="vazio">Digite ao menos 2 caracteres.</div>{% endif %}
+{% endblock %}

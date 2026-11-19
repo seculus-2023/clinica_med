@@ -1,0 +1,82 @@
+{# Painel de teleconsulta no prontuário (variável: ag) #}
+<div class="card mb-3 border-primary"><div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+  <span><i class="bi bi-camera-video text-primary"></i> Teleconsulta
+    {% if ag.tele_consentimento_em %}<span class="badge text-bg-success">termo aceito {{ ag.tele_consentimento_em|date:"d/m H:i" }}</span>
+    {% else %}<span class="badge text-bg-warning">paciente ainda não aceitou o termo</span>{% endif %}</span>
+  <span class="d-flex gap-2">
+    <button type="button" class="btn btn-sm btn-outline-primary" id="teleMostrar"><i class="bi bi-display"></i> Mostrar sala aqui</button>
+    <a href="{{ ag.sala_video_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-light border"><i class="bi bi-box-arrow-up-right"></i> Nova aba</a>
+    {% if ag.tele_autoriza_gravacao %}
+      <button type="button" class="btn btn-sm btn-danger" id="gravIniciar"><i class="bi bi-record-circle"></i> Gravar</button>
+      <button type="button" class="btn btn-sm btn-dark d-none" id="gravParar"><i class="bi bi-stop-circle"></i> Parar e salvar <span id="gravTempo">00:00</span></button>
+    {% else %}<span class="small text-muted align-self-center">Gravação não autorizada pelo paciente</span>{% endif %}
+  </span>
+</div>
+<div class="card-body d-none" id="telePainel">
+  <div class="ratio ratio-16x9 rounded overflow-hidden border">
+    <iframe data-src="{{ ag.sala_video_url }}#userInfo.displayName=%22{{ ag.medico.nome|urlencode }}%22&config.prejoinPageEnabled=false"
+            allow="camera; microphone; fullscreen; display-capture; autoplay" title="Sala de teleconsulta" id="teleFrame"></iframe>
+  </div>
+  <div class="small text-muted mt-1">Link do paciente (com termo de consentimento): <span class="text-break">{{ ag.link_teleconsulta }}</span></div>
+</div>
+<div class="card-footer small d-none" id="gravStatus"></div>
+</div>
+<script>
+(function () {
+  var painel = document.getElementById('telePainel'), frame = document.getElementById('teleFrame');
+  document.getElementById('teleMostrar').addEventListener('click', function () {
+    painel.classList.toggle('d-none');
+    if (!frame.src) frame.src = frame.dataset.src;
+  });
+  var bI = document.getElementById('gravIniciar'), bP = document.getElementById('gravParar');
+  if (!bI) return;
+  var st = document.getElementById('gravStatus'), tempo = document.getElementById('gravTempo');
+  var rec = null, partes = [], ini = 0, relogio = null, fluxos = [];
+  function aviso(t, cls) { st.className = 'card-footer small ' + (cls || ''); st.textContent = t; st.classList.remove('d-none'); }
+  bI.addEventListener('click', async function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || !window.MediaRecorder) {
+      aviso('Este navegador não permite gravar. Use Chrome ou Edge no computador.', 'text-danger'); return;
+    }
+    try {
+      painel.classList.remove('d-none'); if (!frame.src) frame.src = frame.dataset.src;
+      aviso('Selecione ESTA ABA e marque "Compartilhar áudio da guia" para gravar a voz do paciente.');
+      var tela = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true, preferCurrentTab: true });
+      var mic = null;
+      try { mic = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { mic = null; }
+      fluxos = [tela].concat(mic ? [mic] : []);
+      var ctx = new AudioContext(), destino = ctx.createMediaStreamDestination();
+      fluxos.forEach(function (f) { if (f.getAudioTracks().length) ctx.createMediaStreamSource(f).connect(destino); });
+      var mix = new MediaStream(tela.getVideoTracks().concat(destino.stream.getAudioTracks()));
+      var tipo = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+      rec = new MediaRecorder(mix, { mimeType: tipo, videoBitsPerSecond: 1200000 });
+      partes = [];
+      rec.ondataavailable = function (e) { if (e.data.size) partes.push(e.data); };
+      rec.onstop = enviar;
+      tela.getVideoTracks()[0].addEventListener('ended', function () { if (rec && rec.state === 'recording') rec.stop(); });
+      rec.start(5000);
+      ini = Date.now();
+      relogio = setInterval(function () { var s = Math.floor((Date.now() - ini) / 1000); tempo.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }, 1000);
+      bI.classList.add('d-none'); bP.classList.remove('d-none');
+      aviso('● Gravando — a gravação fica salva no prontuário ao parar.', 'text-danger');
+      window.addEventListener('beforeunload', avisoSaida);
+    } catch (e) { aviso('Gravação cancelada: ' + e.message, 'text-muted'); }
+  });
+  function avisoSaida(e) { if (rec && rec.state === 'recording') { e.preventDefault(); e.returnValue = ''; } }
+  bP.addEventListener('click', function () { if (rec && rec.state === 'recording') rec.stop(); });
+  function enviar() {
+    clearInterval(relogio);
+    fluxos.forEach(function (f) { f.getTracks().forEach(function (t) { t.stop(); }); });
+    window.removeEventListener('beforeunload', avisoSaida);
+    bP.classList.add('d-none'); bI.classList.remove('d-none');
+    var blob = new Blob(partes, { type: 'video/webm' });
+    aviso('Enviando gravação (' + (blob.size / 1048576).toFixed(1) + ' MB)...');
+    var fd = new FormData();
+    fd.append('video', blob, 'teleconsulta.webm');
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fetch('{% url "prontuario:gravacao" ag.pk %}', { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { aviso(d.ok ? '✔ Gravação salva em Exames e anexos do prontuário.' : 'Erro: ' + d.erro, d.ok ? 'text-success' : 'text-danger'); })
+      .catch(function (e) { aviso('Falha no envio: ' + e.message + '. Não feche a página e tente novamente.', 'text-danger'); });
+  }
+})();
+</script>

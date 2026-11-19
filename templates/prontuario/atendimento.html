@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block titulo %}Atendimento - {{ p.nome }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-clipboard2-pulse"></i>{{ a.get_tipo_display }} — {{ a.data|date:"d/m/Y H:i" }}
+    {% if a.finalizado %}<span class="badge text-bg-success fs-6"><i class="bi bi-patch-check"></i> Finalizado</span>{% else %}<span class="badge text-bg-warning fs-6">Em andamento</span>{% endif %}
+    {% if modo_consulta %}<span class="badge text-bg-secondary fs-6"><i class="bi bi-eye"></i> Somente consulta</span>{% endif %}</h1>
+    <p>{% if a.modelo %}<span class="badge text-bg-light border">{{ a.modelo }}</span> {% endif %}{{ a.medico }}{% if a.medico.registro_completo %} · {{ a.medico.registro_completo }}{% endif %}{% if a.finalizado_em %} · assinado em {{ a.finalizado_em|date:"d/m/Y H:i" }}{% endif %}</p></div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if pode_editar_registro %}
+      <a href="{% url 'prontuario:atendimento_editar' a.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
+      <form method="post" action="{% url 'prontuario:atendimento_finalizar' a.pk %}" data-confirm="Finalizar e assinar? O registro não poderá mais ser alterado.">{% csrf_token %}
+        <button class="btn btn-primary"><i class="bi bi-pen"></i> Finalizar</button></form>
+    {% endif %}
+    {% if pode_documentos and not modo_consulta %}<a href="{% url 'documentos:documento_novo' %}?atendimento={{ a.pk }}&tipo=receita" class="btn btn-outline-primary"><i class="bi bi-capsule"></i> Prescrever</a>
+      <a href="{% url 'documentos:documento_novo' %}?atendimento={{ a.pk }}&tipo=atestado" class="btn btn-outline-primary"><i class="bi bi-file-earmark-text"></i> Atestado</a>{% endif %}
+    <a href="{% if modo_consulta %}{% url 'prontuario:consulta_paciente' p.pk %}{% else %}{% url 'prontuario:paciente' p.pk %}{% endif %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Prontuário</a>
+  </div>
+</div>
+{% include "prontuario/_cabecalho.html" %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">S</span> Subjetivo</div><div class="card-body small">
+      <p class="mb-2"><b>Queixa principal:</b><br><span style="white-space: pre-line;">{{ a.queixa_principal|default:"-" }}</span></p>
+      <p class="mb-2"><b>História da doença atual:</b><br><span style="white-space: pre-line;">{{ a.hda|default:"-" }}</span></p>
+      <p class="mb-0"><b>Revisão de sistemas:</b><br><span style="white-space: pre-line;">{{ a.revisao_sistemas|default:"-" }}</span></p>
+      {% for r, v in resp.S %}<div><b>{{ r }}:</b> {{ v }}</div>{% endfor %}
+    </div></div>
+    <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">O</span> Objetivo</div><div class="card-body small">
+      {% if a.tem_sinais_vitais %}<div class="d-flex flex-wrap gap-3 mb-2">
+        {% if a.pa %}<span><b>PA</b> {{ a.pa }} mmHg</span>{% endif %}{% if a.fc %}<span><b>FC</b> {{ a.fc }} bpm</span>{% endif %}
+        {% if a.fr %}<span><b>FR</b> {{ a.fr }} irpm</span>{% endif %}{% if a.temperatura %}<span><b>Temp.</b> {{ a.temperatura }} °C</span>{% endif %}
+        {% if a.spo2 %}<span><b>SpO₂</b> {{ a.spo2 }}%</span>{% endif %}{% if a.peso %}<span><b>Peso</b> {{ a.peso }} kg</span>{% endif %}
+        {% if a.altura %}<span><b>Altura</b> {{ a.altura }} cm</span>{% endif %}{% if a.imc %}<span><b>IMC</b> {{ a.imc }} ({{ a.imc_classe }})</span>{% endif %}
+        {% if a.glicemia %}<span><b>Glicemia</b> {{ a.glicemia }} mg/dL</span>{% endif %}{% if a.dor is not None %}<span><b>Dor</b> {{ a.dor }}/10</span>{% endif %}
+      </div>{% endif %}
+      {% for r, v in resp.O %}<div><b>{{ r }}:</b> {{ v }}</div>{% endfor %}
+      <b>Exame físico:</b><br><span style="white-space: pre-line;">{{ a.exame_fisico|default:"-" }}</span>
+    </div></div>
+    <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">A</span> Avaliação</div><div class="card-body small">
+      <p class="mb-1"><b>CID principal:</b> {{ a.cid_principal|default:"-" }}</p>
+      {% if a.cids_secundarios.all %}<p class="mb-1"><b>CIDs secundários:</b> {% for c in a.cids_secundarios.all %}{{ c }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+      {% for r, v in resp.A %}<div><b>{{ r }}:</b> {{ v }}</div>{% endfor %}
+      <b>Hipótese diagnóstica:</b><br><span style="white-space: pre-line;">{{ a.hipotese_diagnostica|default:"-" }}</span>
+    </div></div>
+    <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">P</span> Plano</div><div class="card-body small">
+      <p class="mb-2"><b>Conduta:</b><br><span style="white-space: pre-line;">{{ a.conduta|default:"-" }}</span></p>
+      <p class="mb-2"><b>Exames solicitados:</b><br><span style="white-space: pre-line;">{{ a.exames_solicitados|default:"-" }}</span></p>
+      <p class="mb-2"><b>Orientações:</b><br><span style="white-space: pre-line;">{{ a.orientacoes|default:"-" }}</span></p>
+      <p class="mb-0"><b>Retorno:</b> {{ a.retorno_em|date:"d/m/Y"|default:"-" }}</p>
+      {% for r, v in resp.P %}<div><b>{{ r }}:</b> {{ v }}</div>{% endfor %}
+    </div></div>
+    {% if ver_privado and a.anotacoes_privadas %}<div class="card mb-3 border-warning"><div class="card-header"><i class="bi bi-lock"></i> Anotações privadas (visíveis só para você)</div>
+      <div class="card-body small" style="white-space: pre-line;">{{ a.anotacoes_privadas }}</div></div>{% endif %}
+
+    <div class="card mb-3"><div class="card-header">Adendos</div><div class="card-body">
+      {% for ad in a.adendos.all %}<div class="timeline-item"><div class="small text-muted">{{ ad.criado_em|date:"d/m/Y H:i" }} — {{ ad.autor }}</div><div class="small" style="white-space: pre-line;">{{ ad.texto }}</div></div>
+      {% empty %}<p class="small text-muted">Nenhum adendo.</p>{% endfor %}
+      {% if pode_adendo and a.finalizado %}
+      <form method="post" class="mt-2">{% csrf_token %}
+        <label class="form-label" for="adendo">Incluir adendo (complemento ao registro assinado)</label>
+        <textarea name="adendo" id="adendo" class="form-control" rows="3" required></textarea>
+        <div class="text-end mt-2"><button class="btn btn-primary btn-sm"><i class="bi bi-plus"></i> Incluir adendo</button></div>
+      </form>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-4">
+    {% if a.agendamento %}<div class="card mb-3"><div class="card-header">Agendamento</div><div class="card-body small">
+      {{ a.agendamento.inicio|date:"d/m/Y H:i" }} — {{ a.agendamento.tipo }}<br>Status: {{ a.agendamento.get_status_display }}
+      <div><a href="{% url 'agenda:detalhe' a.agendamento.pk %}">ver agendamento</a></div></div></div>{% endif %}
+    <div class="card mb-3"><div class="card-header">Prescrições e documentos</div><ul class="list-group list-group-flush">
+      {% for d in documentos %}<li class="list-group-item small"><a href="{% url 'documentos:imprimir' d.pk %}" target="_blank">{{ d.titulo_exibicao }}</a> <span class="text-muted">{{ d.data|date:"d/m/Y" }}</span></li>{% empty %}<li class="list-group-item small text-muted">Nenhum.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header d-flex justify-content-between">Exames / anexos {% if not modo_consulta %}<a href="{% url 'prontuario:anexo_novo' p.pk %}?atendimento={{ a.pk }}" class="small">+ anexar</a>{% endif %}</div><ul class="list-group list-group-flush">
+      {% for x in a.anexos.all %}<li class="list-group-item small">{% if x.arquivo %}<a href="{% url 'prontuario:anexo_arquivo' x.pk %}" target="_blank">{{ x.titulo }}</a>{% else %}{{ x.titulo }}{% endif %} <span class="text-muted">{{ x.data|date:"d/m/Y" }}</span></li>{% empty %}<li class="list-group-item small text-muted">Nenhum.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

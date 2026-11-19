@@ -1,0 +1,31 @@
+{% load static clinica_tags %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>Confirmação de atendimento | {{ ag.clinica.nome }}</title></head>
+<body>
+<main class="login-page">
+  <div class="login-card text-center" style="max-width: 460px;">
+    <div class="topo"><img src="{% static 'icons/icon-192.png' %}" alt=""><h1>{{ ag.clinica.nome }}</h1>
+      <div class="sub">Olá, {{ ag.paciente.nome }}</div></div>
+    <div class="mb-3" style="font-size: 1.05rem;">
+      <div><b>{{ ag.tipo }}</b> com {{ ag.medico }}</div>
+      <div class="fs-4 fw-bold my-1">{{ ag.inicio|date:"d/m/Y" }} às {{ ag.inicio|time:"H:i" }}</div>
+      {% if ag.clinica.endereco %}<div class="small opacity-75">{{ ag.clinica.endereco }} {{ ag.clinica.cidade }}</div>{% endif %}
+    </div>
+    {% if resultado == 'confirmado' %}<div class="alert alert-success">Presença confirmada! Obrigado.</div>
+    {% elif resultado == 'cancelado' %}<div class="alert alert-warning">Atendimento cancelado. Para reagendar, fale com a clínica{% if ag.clinica.whatsapp %} pelo WhatsApp {{ ag.clinica.whatsapp }}{% endif %}.</div>
+    {% elif not futuro %}<div class="alert alert-secondary">Este atendimento já ocorreu.</div>
+    {% elif ag.status == 'confirmado' %}<div class="alert alert-success">Sua presença já está confirmada.</div>
+      <form method="post">{% csrf_token %}<button name="acao" value="cancelar" class="btn btn-instalar w-100" onclick="return confirm('Deseja cancelar?')">Não poderei ir — cancelar</button></form>
+    {% elif ag.status == 'agendado' %}
+      <form method="post" class="d-grid gap-2">{% csrf_token %}
+        <button name="acao" value="confirmar" class="btn btn-entrar"><i class="bi bi-check2-circle me-1"></i>Confirmar presença</button>
+        <button name="acao" value="cancelar" class="btn btn-instalar" onclick="return confirm('Deseja cancelar?')">Não poderei ir — cancelar</button>
+      </form>
+    {% else %}<div class="alert alert-secondary">Situação: {{ ag.get_status_display }}</div>{% endif %}
+    {% if futuro and ag.status in 'agendado,confirmado' and resultado != 'cancelado' %}
+      <a href="{% url 'agenda:checkin' ag.token %}" class="btn btn-instalar w-100 mt-2"><i class="bi bi-person-vcard me-1"></i>{% if ag.checkin_em %}Check-in feito — revisar dados{% else %}Fazer check-in digital (adiantar cadastro){% endif %}</a>
+      {% if ag.teleconsulta %}<a href="{{ ag.link_teleconsulta }}" target="_blank" rel="noopener" class="btn btn-entrar w-100 mt-2"><i class="bi bi-camera-video me-1"></i>Sala da teleconsulta</a>{% endif %}
+    {% endif %}
+    {% if ag.clinica.whatsapp %}<a class="btn btn-link text-white mt-2" href="https://wa.me/{{ ag.clinica.whatsapp|whatsapp_numero }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Falar com a clínica / reagendar</a>{% endif %}
+  </div>
+</main>
+</body></html>

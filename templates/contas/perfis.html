@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Perfis de acesso{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-shield-lock"></i>Perfis de acesso</h1><p>Defina o que cada perfil pode ver ou editar em cada módulo.</p></div>
+  {% if perm|edita:'administrativo' %}<a href="{% url 'contas:perfil_novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo perfil</a>{% endif %}
+</div>
+<div class="row g-3">
+{% for p in perfis %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-body">
+    <div class="d-flex justify-content-between"><h2 class="h6 fw-bold mb-1">{{ p.nome }}</h2>
+      {% if perm|edita:'administrativo' %}<a href="{% url 'contas:perfil_editar' p.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>{% endif %}</div>
+    <p class="small text-muted">{{ p.descricao }}</p>
+    <div class="d-flex flex-wrap gap-1">
+      {% for chave, nivel in p.permissoes.items %}{% if nivel != 'nenhum' %}<span class="badge {% if nivel == 'editar' %}text-bg-success{% else %}text-bg-light border{% endif %}">{{ chave }}{% if nivel == 'ver' %} (ver){% endif %}</span>{% endif %}{% endfor %}
+    </div>
+    {% if p.apenas_propria_agenda %}<div class="small mt-2 text-warning-emphasis"><i class="bi bi-person-lock"></i> Somente a própria agenda</div>{% endif %}
+    <div class="small text-muted mt-2">{{ p.vinculos.count }} usuário(s)</div>
+  </div></div></div>
+{% endfor %}
+</div>
+{% endblock %}

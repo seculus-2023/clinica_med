@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ doc.titulo_exibicao }} - {{ doc.paciente.nome }}</title>
+<style>
+  @page { size: A4; margin: 16mm; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #111; margin: 0 auto; max-width: 800px; padding: 24px; font-size: 14px; background: #fff; }
+  .cab { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #139e86; padding-bottom: 10px; }
+  .cab img { max-height: 64px; max-width: 160px; } .cab h1 { margin: 0; font-size: 20px; } .muted { color: #555; font-size: 12px; }
+  h2 { text-align: center; letter-spacing: 2px; text-transform: uppercase; font-size: 17px; margin: 28px 0 18px; }
+  .pac { margin-bottom: 18px; } .item { margin: 0 0 14px; } .item b { font-size: 15px; }
+  pre { white-space: pre-wrap; font-family: inherit; font-size: 14px; line-height: 1.6; }
+  .assin { margin-top: 70px; text-align: center; } .assin .linha { border-top: 1px solid #111; width: 320px; margin: 0 auto 4px; }
+  .rodape { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 6px; text-align: center; }
+  .especial { border: 2px solid #111; padding: 10px; margin-bottom: 14px; font-size: 12px; }
+  .no-print { text-align: right; margin-bottom: 10px; }
+  @media print { .no-print { display: none; } body { padding: 0; } }
+</style></head>
+<body>
+<div class="no-print"><button onclick="window.print()">Imprimir</button></div>
+<div class="cab">
+  {% if c.logo %}<img src="{{ c.logo.url }}" alt="">{% endif %}
+  <div><h1>{{ c.nome }}</h1><div class="muted">{% if c.cnpj %}CNPJ {{ c.cnpj }} · {% endif %}{{ c.endereco }} {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}<br>{{ c.telefone }}{% if c.whatsapp %} · WhatsApp {{ c.whatsapp }}{% endif %}{% if c.email %} · {{ c.email }}{% endif %}</div></div>
+</div>
+<h2>{{ doc.titulo_exibicao }}</h2>
+{% if doc.tipo == 'receita_especial' %}<div class="especial"><b>RECEITUÁRIO DE CONTROLE ESPECIAL</b> — 1ª via: farmácia · 2ª via: paciente<br>
+  Emitente: {{ doc.medico.nome }} — {{ doc.medico.registro_completo }} · Endereço: {{ c.endereco }} {{ c.cidade }}/{{ c.uf }}</div>{% endif %}
+<div class="pac"><b>Paciente:</b> {{ doc.paciente.nome }}{% if doc.paciente.cpf %} · CPF {{ doc.paciente.cpf }}{% endif %}{% if doc.tipo == 'receita_especial' and doc.paciente.endereco %}<br><b>Endereço:</b> {{ doc.paciente.endereco }} {{ doc.paciente.numero }} {{ doc.paciente.cidade }}{% endif %}</div>
+{% for i in doc.itens.all %}<div class="item"><b>{{ forloop.counter }}. {{ i.nome }}</b>{% if i.quantidade %} ........ {{ i.quantidade }}{% endif %}{% if i.posologia %}<br>{{ i.posologia }}{% endif %}</div>{% endfor %}
+{% if doc.conteudo %}<pre>{{ doc.conteudo }}</pre>{% endif %}
+{% if doc.cid %}<p><b>CID:</b> {{ doc.cid }}</p>{% endif %}
+<p style="margin-top: 26px;">{{ c.cidade|default:"" }}{% if c.cidade %}, {% endif %}{{ doc.data|date:"d \d\e F \d\e Y" }}.</p>
+<div class="assin"><div class="linha"></div><b>{{ doc.medico.nome }}</b><br>{{ doc.medico.registro_completo }}</div>
+<div class="rodape muted">Documento nº {{ doc.pk }} · código de verificação {{ doc.codigo|stringformat:"s"|slice:":8"|upper }}</div>
+</body></html>

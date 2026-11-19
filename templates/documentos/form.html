@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block titulo %}Documento{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-file-earmark-medical"></i>{% if obj %}Editar documento{% else %}Novo documento / prescrição{% endif %}</h1>
+  <a href="{% url 'documentos:documento_list' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a></div>
+<div id="alertaInteracoes" class="alert alert-warning d-none small"></div>
+<div id="alertaAlergia" class="alert alert-danger d-none"><i class="bi bi-exclamation-triangle-fill"></i> <b>Atenção — paciente com alergias registradas:</b> <span></span></div>
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  <div class="card mb-3"><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.tipo col="col-md-4" %}
+    {% include "_campo.html" with f=form.modelo col="col-md-4" %}
+    {% include "_campo.html" with f=form.data col="col-md-4" %}
+    {% include "_campo.html" with f=form.paciente col="col-md-6" %}
+    {% include "_campo.html" with f=form.medico col="col-md-6" %}
+    {% include "_campo.html" with f=form.titulo col="col-md-6" %}
+    {% include "_campo.html" with f=form.cid col="col-md-3" %}
+    {% include "_campo.html" with f=form.dias col="col-md-3" %}
+  </div></div></div>
+
+  <div class="card mb-3" id="cardItens"><div class="card-header d-flex justify-content-between align-items-center">Medicamentos prescritos
+    <button type="button" class="btn btn-sm btn-outline-primary" id="addItem"><i class="bi bi-plus"></i> Adicionar</button></div>
+    <div class="card-body">
+      {{ itens.management_form }}
+      {% if itens.non_form_errors %}<div class="alert alert-danger py-2">{{ itens.non_form_errors|join:" " }}</div>{% endif %}
+      <div id="itens">
+      {% for f in itens %}
+        <div class="row g-2 align-items-end border-bottom pb-2 mb-2 item-presc">
+          {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+          {% include "_campo.html" with f=f.medicamento col="col-md-4" %}
+          {% include "_campo.html" with f=f.descricao col="col-md-3" %}
+          {% include "_campo.html" with f=f.quantidade col="col-md-2" %}
+          {% include "_campo.html" with f=f.posologia col="col-md-3" %}
+          {% if f.instance.pk %}<div class="col-12"><div class="form-check">{{ f.DELETE }} <label class="form-check-label small" for="{{ f.DELETE.id_for_label }}">remover</label></div></div>{% endif %}
+        </div>
+      {% endfor %}
+      </div>
+      <template id="tplItem">
+        <div class="row g-2 align-items-end border-bottom pb-2 mb-2 item-presc">
+          {% with f=itens.empty_form %}
+          {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+          {% include "_campo.html" with f=f.medicamento col="col-md-4" %}
+          {% include "_campo.html" with f=f.descricao col="col-md-3" %}
+          {% include "_campo.html" with f=f.quantidade col="col-md-2" %}
+          {% include "_campo.html" with f=f.posologia col="col-md-3" %}
+          {% endwith %}
+        </div>
+      </template>
+    </div></div>
+
+  <div class="card mb-3"><div class="card-body">
+    {% include "_campo.html" with f=form.conteudo col="" %}
+  </div></div>
+  <div class="d-flex gap-2 justify-content-end mb-4">
+    <button class="btn btn-outline-primary"><i class="bi bi-check2"></i> Salvar</button>
+    <button class="btn btn-primary" name="imprimir" value="1"><i class="bi bi-printer"></i> Salvar e imprimir</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var tipo = document.getElementById('id_tipo'), card = document.getElementById('cardItens');
+  function vis() { card.classList.toggle('d-none', !/^receita/.test(tipo.value)); }
+  tipo.addEventListener('change', vis); vis();
+
+  document.getElementById('id_modelo').addEventListener('change', function () {
+    if (!this.value) return;
+    fetch('{% url "documentos:api_modelo" 0 %}'.replace('0/', this.value + '/'), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        var c = document.getElementById('id_conteudo');
+        if (!c.value || confirm('Substituir o texto atual pelo modelo?')) c.value = d.conteudo;
+        tipo.value = d.tipo; vis();
+        var t = document.getElementById('id_titulo'); if (!t.value) t.value = d.titulo;
+      });
+  });
+
+  var total = document.getElementById('id_itens-TOTAL_FORMS');
+  document.getElementById('addItem').addEventListener('click', function () {
+    var n = parseInt(total.value, 10);
+    var html = document.getElementById('tplItem').innerHTML.replace(/__prefix__/g, n);
+    var div = document.createElement('div'); div.innerHTML = html;
+    var el = div.firstElementChild; document.getElementById('itens').appendChild(el);
+    total.value = n + 1; iniciarAutocomplete(el);
+  });
+  document.getElementById('itens').addEventListener('ac:selecionado', function (e) {
+    var linha = e.target.closest('.item-presc'), pos = linha.querySelector('[name$="-posologia"]');
+    if (pos && !pos.value && e.detail.posologia) pos.value = e.detail.posologia;
+    verificarAlergia();
+  });
+
+  // ---- segurança da prescrição: alergias + interações medicamentosas ----
+  var alerta = document.getElementById('alertaAlergia'), caixa = document.getElementById('alertaInteracoes');
+  var pac = document.getElementById('id_paciente'), timer = null;
+  function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function verificarAlergia() { clearTimeout(timer); timer = setTimeout(verificar, 350); }
+  function verificar() {
+    var p = new URLSearchParams();
+    p.append('paciente', pac.value || '');
+    document.querySelectorAll('#itens .item-presc').forEach(function (l) {
+      var del = l.querySelector('[name$="-DELETE"]'); if (del && del.checked) return;
+      var id = l.querySelector('[name$="-medicamento"]'), tx = l.querySelector('[name$="-descricao"]');
+      if (id && id.value) p.append('med', id.value);
+      if (tx && tx.value) p.append('txt', tx.value);
+    });
+    fetch('{% url "cadastros:api_verificar_prescricao" %}?' + p, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (d.alergias) {
+          var c = d.conflitos_alergia.map(function (x) { return x.item + ' (' + x.alergia + ')'; });
+          alerta.querySelector('span').textContent = d.alergias + (c.length ? ' — POSSÍVEL CONFLITO COM: ' + c.join(', ') : '');
+          alerta.classList.remove('d-none');
+          alerta.classList.toggle('alert-warning', !c.length); alerta.classList.toggle('alert-danger', !!c.length);
+        } else { alerta.classList.add('d-none'); }
+        if (d.interacoes.length) {
+          var cor = { contraindicada: 'danger', grave: 'danger', moderada: 'warning', leve: 'info' };
+          caixa.innerHTML = '<div class="fw-bold mb-1"><i class="bi bi-exclamation-diamond-fill"></i> Interações medicamentosas</div>' +
+            d.interacoes.map(function (i) {
+              return '<div class="mb-1"><span class="badge text-bg-' + (cor[i.gravidade] || 'secondary') + '">' + esc(i.gravidade_txt) + '</span> <b>' +
+                esc(i.a) + '</b> × <b>' + esc(i.b) + '</b>: ' + esc(i.efeito) + (i.conduta ? ' <i>Conduta: ' + esc(i.conduta) + '</i>' : '') + '</div>';
+            }).join('') + '<div class="small text-muted mt-1">Apoio à decisão — confirme em bula/compêndio oficial.</div>';
+          caixa.classList.remove('d-none');
+        } else { caixa.classList.add('d-none'); }
+      });
+  }
+  pac.addEventListener('change', verificarAlergia); verificarAlergia();
+  document.getElementById('itens').addEventListener('input', verificarAlergia);
+  document.getElementById('itens').addEventListener('change', verificarAlergia);
+})();
+</script>
+{% endblock %}

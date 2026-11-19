@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Atender contato{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-headset"></i>{{ c.paciente.nome }}</h1><p>{{ c.get_motivo_display }} · previsto para {{ c.data_prevista|date:"d/m/Y" }} · {{ c.get_status_display }} · {{ c.tentativas }} tentativa(s)</p></div>
+  <div class="d-flex gap-2"><a href="{% url 'callcenter:contato_editar' c.pk %}" class="btn btn-light"><i class="bi bi-pencil"></i></a>
+    <a href="{% url 'callcenter:fila' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Fila</a></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% if c.paciente.celular %}
+          <a href="tel:{{ c.paciente.celular|so_digitos }}" class="btn btn-outline-primary"><i class="bi bi-telephone"></i> Ligar {{ c.paciente.celular }}</a>
+          <a href="https://wa.me/{{ c.paciente.celular|whatsapp_numero }}?text={{ msg_whatsapp|urlencode }}" target="_blank" rel="noopener" class="btn btn-success"><i class="bi bi-whatsapp"></i> WhatsApp com mensagem</a>
+        {% endif %}
+        {% if c.paciente.email %}<a href="mailto:{{ c.paciente.email }}" class="btn btn-light"><i class="bi bi-envelope"></i> E-mail</a>{% endif %}
+      </div>
+      {% if c.observacoes %}<div class="alert alert-light border small mb-3" style="white-space: pre-line;">{{ c.observacoes }}</div>{% endif %}
+      <form method="post" novalidate>{% csrf_token %}
+        <div class="row g-3">
+          {% include "_campo.html" with f=form.canal col="col-md-6" %}
+          {% include "_campo.html" with f=form.resultado col="col-md-6" %}
+          {% include "_campo.html" with f=form.satisfacao col="col-md-6" %}
+          {% include "_campo.html" with f=form.nova_data col="col-md-6" %}
+          {% include "_campo.html" with f=form.anotacao col="col-12" %}
+        </div>
+        <div class="text-end mt-3"><button class="btn btn-primary"><i class="bi bi-check2"></i> Registrar interação</button></div>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">Interações</div><div class="card-body">
+      {% for i in interacoes %}<div class="timeline-item"><div class="small text-muted">{{ i.data|date:"d/m/Y H:i" }} · {{ i.usuario }} · {{ i.get_canal_display }}</div><div class="small"><b>{{ i.get_resultado_display }}</b>{% if i.anotacao %} — {{ i.anotacao }}{% endif %}</div></div>
+      {% empty %}<p class="small text-muted mb-0">Nenhuma interação ainda.</p>{% endfor %}
+    </div></div>
+    <div class="card"><div class="card-header">Últimos atendimentos</div><ul class="list-group list-group-flush">
+      {% for a in historico %}<li class="list-group-item small">{{ a.inicio|date:"d/m/Y" }} — {{ a.tipo }} ({{ a.medico }}) · {{ a.get_status_display }}</li>{% empty %}<li class="list-group-item small text-muted">Nenhum.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

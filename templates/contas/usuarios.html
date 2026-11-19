@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-people"></i>Usuários da clínica</h1><p>Usuários com acesso a {{ request.clinica.nome }} e seus perfis.</p></div>
+  {% if perm|edita:'administrativo' %}<a href="{% url 'contas:usuario_novo' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Novo usuário</a>{% endif %}
+</div>
+<form class="filtros mb-3"><input type="search" name="q" value="{{ q }}" class="form-control" style="max-width: 340px;" placeholder="Buscar usuário..."><button class="btn btn-light">Buscar</button></form>
+<div class="card"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>Nome</th><th>Login</th><th>E-mail</th><th>Perfil</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
+  <tbody>
+  {% for v in vinculos %}
+    <tr><td class="fw-semibold">{{ v.usuario.get_full_name|default:"-" }}</td><td>{{ v.usuario.username }}</td><td>{{ v.usuario.email|default:"-" }}</td>
+      <td><span class="badge text-bg-light border">{{ v.perfil }}</span></td>
+      <td>{{ v.usuario.last_login|date:"d/m/Y H:i"|default:"nunca" }}</td>
+      <td>{% if v.ativo %}<span class="badge text-bg-success">Ativo</span>{% else %}<span class="badge text-bg-secondary">Inativo</span>{% endif %}</td>
+      <td class="text-end">{% if perm|edita:'administrativo' %}<a href="{% url 'contas:usuario_editar' v.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7"><div class="vazio">Nenhum usuário.</div></td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Clínicas{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-buildings"></i>Clínicas</h1><p>Cada clínica possui seus próprios dados, usuários e perfis.</p></div>
+  <a href="{% url 'contas:clinica_nova' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nova clínica</a>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>Nome</th><th>CNPJ</th><th>Cidade</th><th>WhatsApp</th><th>Usuários</th><th>Ativa</th><th></th></tr></thead>
+  <tbody>
+  {% for c in clinicas %}
+    <tr><td class="fw-semibold">{{ c.nome }}</td><td>{{ c.cnpj }}</td><td>{{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}</td>
+      <td>{{ c.whatsapp|default:"-" }}</td><td>{{ c.vinculos.count }}</td><td>{{ c.ativa|yesno:"Sim,Não" }}</td>
+      <td class="text-end text-nowrap"><a href="{% url 'contas:selecionar_clinica' %}?id={{ c.pk }}" class="btn btn-sm btn-light">Acessar</a>
+        <a href="{% url 'contas:clinica_editar' c.pk %}" class="btn btn-sm btn-light"><i class="bi bi-pencil"></i></a></td></tr>
+  {% empty %}<tr><td colspan="7"><div class="vazio">Nenhuma clínica.</div></td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

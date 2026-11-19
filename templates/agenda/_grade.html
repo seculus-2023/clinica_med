@@ -1,0 +1,11 @@
+{# Grade semanal de atendimento de todos os médicos. Variáveis: linhas, dias #}
+<div class="table-responsive"><table class="table table-bordered tabela-grade mb-0">
+  <thead><tr><th>Profissional</th>{% for d in dias %}<th>{{ d }}</th>{% endfor %}<th>Horas/sem.</th></tr></thead>
+  <tbody>
+  {% for l in linhas %}
+    <tr><td><span class="dot" style="background: {{ l.medico.cor }}"></span> <b>{{ l.medico.nome }}</b><div class="small text-muted">{{ l.especialidades }}</div></td>
+      {% for i, dia, faixas in l.grade %}<td>{% for f in faixas %}<span class="faixa">{{ f }}</span>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>{% endfor %}
+      <td>{{ l.horas|floatformat:"-1" }}h</td></tr>
+  {% empty %}<tr><td colspan="9"><div class="vazio">Nenhuma grade de horários cadastrada.</div></td></tr>{% endfor %}
+  </tbody>
+</table></div>

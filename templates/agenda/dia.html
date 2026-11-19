@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Agenda do dia{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-list-check"></i>Agenda do dia</h1><p>Confirmação de presença, chegada e andamento dos atendimentos.</p></div>
+  <form class="d-flex gap-2 flex-wrap" method="get" style="max-width: 100%;">
+    <div class="input-group" style="flex: 1 1 230px;">
+      <a class="btn btn-light border" href="?data={{ anterior|date:'Y-m-d' }}&medico={{ medico_sel }}" aria-label="Dia anterior"><i class="bi bi-chevron-left"></i></a>
+      <input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()" aria-label="Data">
+      <a class="btn btn-light border" href="?data={{ proximo|date:'Y-m-d' }}&medico={{ medico_sel }}" aria-label="Próximo dia"><i class="bi bi-chevron-right"></i></a>
+    </div>
+    <select name="medico" class="form-select" style="flex: 1 1 180px; width: auto;" onchange="this.form.submit()" aria-label="Profissional">
+      <option value="">Todos</option>{% for m in medicos %}<option value="{{ m.pk }}" {% if medico_sel == m.pk|stringformat:'s' %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}</select>
+  </form>
+</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% for s, rotulo, n, cor in resumo %}<span class="badge-status" style="background: {{ cor }}">{{ rotulo }}: {{ n }}</span>{% endfor %}
+</div>
+<div class="card">
+  {% for a in agendamentos %}
+  <div class="agenda-linha">
+    <div class="hora">{{ a.inicio|time:"H:i" }}<div class="small text-muted fw-normal">{{ a.fim|time:"H:i" }}</div></div>
+    <div class="barra" style="border-color: {{ a.medico.cor }}">
+      <a href="{% url 'agenda:detalhe' a.pk %}" class="fw-semibold text-decoration-none">{{ a.paciente.nome }}</a>
+      <span class="badge-status ms-1" style="background: {{ a.cor }}">{{ a.get_status_display }}</span>
+      {% if a.pacote_id %}<span class="badge text-bg-light border">Sessão {{ a.numero_sessao }}/{{ a.pacote.quantidade }}</span>{% endif %}
+      <div class="small text-muted">{{ a.tipo }} · {{ a.medico }}{% if a.paciente.celular %} · {{ a.paciente.celular }}{% endif %}
+        {% if a.confirmado_em %} · <i class="bi bi-check2-all text-success"></i> confirmado {% if a.confirmado_por == 'paciente' %}pelo paciente{% endif %}{% endif %}
+        {% if a.chegada_em %} · chegou {{ a.chegada_em|time:"H:i" }}{% endif %}</div>
+    </div>
+    <div class="acoes d-flex flex-wrap gap-1 justify-content-end">
+      {% if pode_editar %}
+        {% if a.status == 'agendado' %}{% include "agenda/_btn_status.html" with s="confirmado" rot="Confirmar" ic="bi-check2" cls="btn-outline-primary" %}{% endif %}
+        {% if a.status == 'agendado' or a.status == 'confirmado' %}
+          {% include "agenda/_btn_status.html" with s="aguardando" rot="Chegou" ic="bi-person-check" cls="btn-outline-success" %}
+          {% include "agenda/_btn_status.html" with s="faltou" rot="Faltou" ic="bi-person-x" cls="btn-outline-danger" %}
+        {% endif %}
+        {% if a.status == 'aguardando' %}
+          {% if perm|edita:'prontuario' %}<a href="{% url 'prontuario:iniciar' a.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-play-fill"></i> Atender</a>
+          {% else %}{% include "agenda/_btn_status.html" with s="em_atendimento" rot="Atender" ic="bi-play-fill" cls="btn-primary" %}{% endif %}
+        {% endif %}
+        {% if a.status == 'em_atendimento' %}
+          {% if perm|edita:'prontuario' %}<a href="{% url 'prontuario:iniciar' a.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-journal-medical"></i> Prontuário</a>{% endif %}
+          {% include "agenda/_btn_status.html" with s="concluido" rot="Concluir" ic="bi-check-circle" cls="btn-success" %}
+        {% endif %}
+      {% endif %}
+      {% if a.paciente.celular %}<a class="btn btn-sm btn-light" target="_blank" rel="noopener" href="https://wa.me/{{ a.paciente.celular|whatsapp_numero }}" title="WhatsApp"><i class="bi bi-whatsapp text-success"></i></a>{% endif %}
+    </div>
+  </div>
+  {% empty %}<div class="vazio"><i class="bi bi-calendar-x"></i>Nenhum atendimento nesta data.</div>{% endfor %}
+</div>
+{% endblock %}

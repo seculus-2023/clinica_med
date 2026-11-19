@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block titulo %}Atendimento - {{ p.nome }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-clipboard2-pulse"></i>{% if obj %}Editar atendimento{% else %}Novo atendimento{% endif %}</h1>
+    {% if ag %}<p>Agendamento: {{ ag.inicio|date:"d/m/Y H:i" }} — {{ ag.tipo }}{% if ag.pacote_id %} (sessão {{ ag.numero_sessao }}/{{ ag.pacote.quantidade }}){% endif %}
+      </p>{% endif %}</div>
+  <a href="{% url 'prontuario:paciente' p.pk %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Prontuário</a>
+</div>
+{% include "prontuario/_cabecalho.html" %}
+{% if ag.teleconsulta %}{% include "prontuario/_teleconsulta.html" %}{% endif %}
+<form method="post" novalidate id="formAtendimento">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  <div class="card mb-3"><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.data col="col-md-3" %}
+    {% include "_campo.html" with f=form.tipo col="col-md-3" %}
+    {% include "_campo.html" with f=form.medico col="col-md-3" %}
+    {% include "_campo.html" with f=form.modelo col="col-md-3" %}
+  </div></div></div>
+
+  <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">S</span> Subjetivo</div><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.queixa_principal col="col-12" %}
+    {% include "_campo.html" with f=form.hda col="col-md-6" %}
+    {% include "_campo.html" with f=form.revisao_sistemas col="col-md-6" %}
+    {% for f in form.campos_S %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endfor %}
+  </div></div></div>
+
+  <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">O</span> Objetivo — sinais vitais e exame físico</div><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.pa_sistolica col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.pa_diastolica col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.fc col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.fr col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.temperatura col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.spo2 col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.peso col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.altura col="col-6 col-md-3 col-xl-2" %}
+    <div class="col-6 col-md-3 col-xl-2"><label class="form-label">IMC</label><input class="form-control" id="imc" readonly tabindex="-1"></div>
+    {% include "_campo.html" with f=form.glicemia col="col-6 col-md-3 col-xl-2" %}
+    {% include "_campo.html" with f=form.dor col="col-6 col-md-3 col-xl-2" %}
+    {% for f in form.campos_O %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endfor %}
+    {% include "_campo.html" with f=form.exame_fisico col="col-12" %}
+  </div></div></div>
+
+  <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">A</span> Avaliação</div><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.cid_principal col="col-md-6" %}
+    <div class="col-md-6">
+      <label class="form-label">CIDs secundários</label>
+      <div class="autocomplete position-relative" data-autocomplete="{% url 'cadastros:api_cid' %}" data-modo="id" id="acCidSec">
+        <input type="hidden" data-ac-valor><input type="text" class="form-control" placeholder="Buscar CID para adicionar..." autocomplete="off" data-ac-texto>
+        <div class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1060; max-height: 280px; overflow-y: auto;" data-ac-lista></div>
+      </div>
+      <div id="cidsSec" class="d-flex flex-wrap gap-1 mt-2">
+        {% for c in cids_sel %}<span class="badge text-bg-light border" data-id="{{ c.pk }}">{{ c.codigo }} {{ c.nome|truncatechars:40 }} <a href="#" class="text-danger ms-1" data-remover>&times;</a><input type="hidden" name="cids_secundarios" value="{{ c.pk }}"></span>{% endfor %}
+      </div>
+    </div>
+    {% for f in form.campos_A %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endfor %}
+    {% include "_campo.html" with f=form.hipotese_diagnostica col="col-12" %}
+  </div></div></div>
+
+  <div class="card mb-3"><div class="card-header"><span class="badge text-bg-primary me-1">P</span> Plano</div><div class="card-body"><div class="row g-3">
+    {% include "_campo.html" with f=form.conduta col="col-md-6" %}
+    {% include "_campo.html" with f=form.exames_solicitados col="col-md-6" %}
+    {% include "_campo.html" with f=form.orientacoes col="col-md-6" %}
+    {% include "_campo.html" with f=form.retorno_em col="col-md-3" %}
+    {% for f in form.campos_P %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endfor %}
+    {% include "_campo.html" with f=form.anotacoes_privadas col="col-12" %}
+  </div></div></div>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-end mb-4">
+    <button class="btn btn-outline-primary"><i class="bi bi-save"></i> Salvar rascunho</button>
+    <button class="btn btn-primary" name="finalizar" value="1" onclick="return confirm('Finalizar e assinar o atendimento? Depois disso o registro não poderá mais ser alterado (apenas adendos).')"><i class="bi bi-pen"></i> Salvar e finalizar</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var peso = document.getElementById('id_peso'), alt = document.getElementById('id_altura'), imc = document.getElementById('imc');
+  function calc() {
+    var p = parseFloat((peso.value || '').replace(',', '.')), a = parseFloat(alt.value) / 100;
+    imc.value = p && a ? (p / (a * a)).toFixed(1) : '';
+  }
+  var sel = document.getElementById('id_modelo');
+  if (sel) sel.addEventListener('change', function () {
+    if (confirm('Trocar o modelo de prontuário? Os campos específicos serão recarregados (o texto digitado nos campos padrão é mantido se você salvar antes).')) {
+      var u = new URL(location.href); u.searchParams.set('modelo', sel.value || '0'); location.href = u.toString();
+    }
+  });
+  peso.addEventListener('input', calc); alt.addEventListener('input', calc); calc();
+  var lista = document.getElementById('cidsSec');
+  document.getElementById('acCidSec').addEventListener('ac:selecionado', function (e) {
+    var it = e.detail;
+    if (lista.querySelector('[data-id="' + it.id + '"]')) return;
+    var s = document.createElement('span');
+    s.className = 'badge text-bg-light border'; s.dataset.id = it.id;
+    s.textContent = it.texto.slice(0, 50) + ' ';
+    var x = document.createElement('a'); x.href = '#'; x.className = 'text-danger ms-1'; x.dataset.remover = '1'; x.innerHTML = '&times;';
+    var h = document.createElement('input'); h.type = 'hidden'; h.name = 'cids_secundarios'; h.value = it.id;
+    s.appendChild(x); s.appendChild(h); lista.appendChild(s);
+    var t = this.querySelector('[data-ac-texto]'); t.value = '';
+  });
+  lista.addEventListener('click', function (e) {
+    if (e.target.dataset.remover) { e.preventDefault(); e.target.parentNode.remove(); }
+  });
+})();
+</script>
+{% endblock %}

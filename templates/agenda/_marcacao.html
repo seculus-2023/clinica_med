@@ -1,0 +1,58 @@
+{# Fluxo de marcação: especialidade -> médico (grade) -> tipo -> semana. Variáveis: contexto de agenda/marcacao.py #}
+<h2 class="h6 text-muted text-uppercase mb-2"><span class="badge text-bg-primary me-1">1</span> Especialidade</h2>
+<div class="row g-2 mb-4">
+  {% for e in especialidades %}
+  <div class="col-6 col-md-4 col-lg-3"><a href="?esp={{ e.pk }}" class="esp-card {% if esp.pk == e.pk %}sel{% endif %}">
+    <i class="bi bi-heart-pulse text-primary"></i> <b>{{ e.nome }}</b></a></div>
+  {% empty %}<div class="col-12 text-muted">Nenhuma especialidade com horários disponíveis.</div>{% endfor %}
+</div>
+
+{% if esp %}
+<h2 class="h6 text-muted text-uppercase mb-2"><span class="badge text-bg-primary me-1">2</span> Profissional — grade de atendimento</h2>
+<div class="row g-2 mb-4">
+  {% for x in medicos %}
+  <div class="col-md-6 col-xl-4"><a href="?esp={{ esp.pk }}&medico={{ x.m.pk }}" class="med-card {% if medico.pk == x.m.pk %}sel{% endif %}">
+    <div class="d-flex align-items-center gap-2"><span class="dot" style="background: {{ x.m.cor }}; width: 12px; height: 12px;"></span>
+      <b>{{ x.m.nome }}</b></div>
+    {% if x.m.registro_completo %}<div class="small text-muted">{{ x.m.registro_completo }}</div>{% endif %}
+    <div class="grade-mini">{% for i, dia, faixas in x.grade %}<span class="{% if faixas %}on{% endif %}" title="{{ faixas|join:', ' }}">{{ dia }}</span>{% endfor %}</div>
+    <div class="small mt-2">{% for i, dia, faixas in x.grade %}{% if faixas %}<div><b>{{ dia }}</b> {{ faixas|join:" · " }}</div>{% endif %}{% endfor %}</div>
+  </a></div>
+  {% empty %}<div class="col-12 text-muted">Nenhum profissional com grade de horários nesta especialidade.</div>{% endfor %}
+</div>
+{% endif %}
+
+{% if medico %}
+<h2 class="h6 text-muted text-uppercase mb-2"><span class="badge text-bg-primary me-1">3</span> Tipo de atendimento</h2>
+<div class="d-flex flex-wrap gap-2 mb-4">
+  {% for t in tipos %}<a href="?esp={{ esp.pk }}&medico={{ medico.pk }}&tipo={{ t.pk }}" class="btn {% if tipo.pk == t.pk %}btn-primary{% else %}btn-outline-primary{% endif %}">
+    {{ t.nome }} <small class="opacity-75">({{ t.duracao_minutos }} min)</small>{% if t.teleconsulta %} <i class="bi bi-camera-video"></i>{% endif %}</a>
+  {% empty %}<span class="text-muted">Nenhum tipo de atendimento disponível.</span>{% endfor %}
+</div>
+{% endif %}
+
+{% if medico and tipo %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <h2 class="h6 text-muted text-uppercase mb-0"><span class="badge text-bg-primary me-1">4</span> Horários livres — {{ semana_ini|date:"d/m" }} a {{ semana_fim|date:"d/m/Y" }}</h2>
+  <div class="btn-group btn-group-sm">
+    {% if sem_ant is not None %}<a class="btn btn-light border" href="?esp={{ esp.pk }}&medico={{ medico.pk }}&tipo={{ tipo.pk }}&sem={{ sem_ant }}"><i class="bi bi-chevron-left"></i> Semana anterior</a>{% endif %}
+    {% if sem_prox %}<a class="btn btn-light border" href="?esp={{ esp.pk }}&medico={{ medico.pk }}&tipo={{ tipo.pk }}&sem={{ sem_prox }}">Próxima semana <i class="bi bi-chevron-right"></i></a>{% endif %}
+  </div>
+</div>
+{% if not total_livres %}<div class="alert alert-light border small py-2">Sem horários livres nesta semana{% if sem_prox %} — veja a próxima{% endif %}.</div>{% endif %}
+<div class="semana mb-4">
+  {% for d in semana %}
+  <div class="dia"><h3>{{ d.dia }}<br><span class="text-muted fw-normal">{{ d.data|date:"d/m" }}</span></h3>
+    <div class="slots">
+      {% for h in d.livres %}
+        {% if publico %}
+          <a href="?esp={{ esp.pk }}&medico={{ medico.pk }}&tipo={{ tipo.pk }}&sem={{ sem }}&slot={{ h.isoformat|urlencode }}#dados" class="btn btn-sm {% if slot == h %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ h|time:"H:i" }}</a>
+        {% else %}
+          <a href="{% url 'agenda:novo' %}?medico={{ medico.pk }}&tipo={{ tipo.pk }}&inicio={{ h|date:'Y-m-d\TH:i'|urlencode }}{% if paciente_sel %}&paciente={{ paciente_sel }}{% endif %}" class="btn btn-sm btn-outline-primary">{{ h|time:"H:i" }}</a>
+        {% endif %}
+      {% empty %}<div class="vaz">—</div>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-calendar-plus"></i>{{ titulo }}</h1>
+  <a href="{% if obj %}{% url 'agenda:detalhe' obj.pk %}{% else %}{% url 'agenda:calendario' %}{% endif %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a></div>
+<form method="post" class="card" novalidate>{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="row g-3">
+      {% include "_campo.html" with f=form.paciente col="col-md-6" %}
+      {% include "_campo.html" with f=form.medico col="col-md-6" %}
+      {% include "_campo.html" with f=form.pacote col="col-md-6" %}
+      {% include "_campo.html" with f=form.tipo col="col-md-6" %}
+      {% include "_campo.html" with f=form.inicio col="col-md-4" %}
+      {% include "_campo.html" with f=form.status col="col-md-4" %}
+      {% include "_campo.html" with f=form.valor col="col-md-4" %}
+      {% include "_campo.html" with f=form.convenio col="col-md-4" %}
+      {% include "_campo.html" with f=form.teleconsulta col="col-md-4" %}
+      {% include "_campo.html" with f=form.notificar col="col-md-4" %}
+      {% if form.repetir %}{% include "_campo.html" with f=form.repetir col="col-md-6" %}{% endif %}
+      {% include "_campo.html" with f=form.observacoes col="col-12" %}
+    </div>
+  </div>
+  <div class="card-footer bg-transparent text-end"><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar agendamento</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var pac = document.getElementById('id_paciente'), pacote = document.getElementById('id_pacote'), tipo = document.getElementById('id_tipo');
+  var atual = pacote.value;
+  function carregar() {
+    fetch('{% url "agenda:api_pacotes" %}?paciente=' + (pac.value || 0), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); }).then(function (d) {
+        pacote.innerHTML = '<option value="">Sem pacote (atendimento avulso)</option>';
+        d.forEach(function (p) {
+          var o = document.createElement('option'); o.value = p.id; o.textContent = p.texto; o.dataset.tipo = p.tipo;
+          if (String(p.id) === String(atual)) o.selected = true;
+          pacote.appendChild(o);
+        });
+      });
+  }
+  pac.addEventListener('change', function () { atual = ''; carregar(); });
+  pacote.addEventListener('change', function () {
+    var o = pacote.selectedOptions[0];
+    if (o && o.dataset.tipo) tipo.value = o.dataset.tipo;
+  });
+  carregar();
+})();
+</script>
+{% endblock %}

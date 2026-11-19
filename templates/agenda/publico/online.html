@@ -1,0 +1,24 @@
+{% extends "agenda/publico/_base.html" %}
+{% block titulo %}Marque sua consulta{% endblock %}
+{% block conteudo %}
+<div class="card"><div class="card-body p-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <h1 class="h4 fw-bold mb-0"><i class="bi bi-calendar-plus text-primary"></i> Marque sua consulta</h1>
+    <a href="{% url 'agenda:grade_publica' c.codigo_publico %}" class="btn btn-sm btn-light border"><i class="bi bi-table"></i> Horários de todos os médicos</a>
+  </div>
+  {% if fechado %}<div class="alert alert-secondary">O agendamento online está indisponível no momento. Entre em contato com a clínica.</div>
+  {% else %}
+  {% include "agenda/_marcacao.html" %}
+  {% if slot and medico and tipo %}
+  <div id="dados"></div>
+  <h2 class="h6 text-muted text-uppercase mb-2"><span class="badge text-bg-primary me-1">5</span> Seus dados</h2>
+  <div class="alert alert-info py-2"><b>{{ esp }}</b> · {{ tipo }} com <b>{{ medico }}</b> — {{ slot|date:"l, d/m/Y" }} às <b>{{ slot|time:"H:i" }}</b></div>
+  <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="slot" value="{{ slot.isoformat }}">
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="row g-3">{% for f in form %}{% if f.name == 'lgpd' %}{% include "_campo.html" with col="col-12" %}{% else %}{% include "_campo.html" with col="col-md-6" %}{% endif %}{% endfor %}</div>
+    <button class="btn btn-primary btn-lg w-100 mt-3"><i class="bi bi-check2-circle"></i> Confirmar agendamento</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div></div>
+{% endblock %}

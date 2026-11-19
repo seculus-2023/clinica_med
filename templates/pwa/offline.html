@@ -1,0 +1,9 @@
+{% load static %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>Sem conexão | MedAccess</title></head>
+<body class="login-page">
+  <div class="login-card text-center">
+    <div class="topo"><img src="{% static 'icons/icon-192.png' %}" alt=""><h1>Sem conexão</h1>
+      <div class="sub">Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.</div></div>
+    <button class="btn btn-entrar w-100" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-1"></i>Tentar novamente</button>
+  </div>
+</body></html>

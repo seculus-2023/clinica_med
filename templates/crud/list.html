@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}{{ cfg.nome_plural }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div>
+    <h1><i class="bi {{ cfg.icone }}"></i>{{ cfg.nome_plural }}</h1>
+    {% if cfg.descricao %}<p>{{ cfg.descricao }}</p>{% endif %}
+  </div>
+  {% if pode_editar %}<div class="d-flex gap-2 flex-wrap">
+    {% for u, ic, rot in cfg.acoes_topo %}<a href="{% url u %}" class="btn btn-outline-primary"><i class="bi {{ ic }}"></i> {{ rot }}</a>{% endfor %}
+    <a href="{% url url_novo %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo(a)</a></div>{% endif %}
+</div>
+
+<form class="filtros mb-3" method="get">
+  {% if cfg.busca %}
+  <div style="flex: 1 1 260px; max-width: 380px;">
+    <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar..." aria-label="Buscar">
+  </div>
+  {% endif %}
+  {% for campo, rotulo, ops, atual in filtros %}
+  <div>
+    <select name="{{ campo }}" class="form-select" aria-label="{{ rotulo }}" onchange="this.form.submit()">
+      <option value="">{{ rotulo }}: todos</option>
+      {% for v, t in ops %}<option value="{{ v }}" {% if atual == v|stringformat:'s' %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+  <button class="btn btn-light"><i class="bi bi-funnel"></i> Filtrar</button>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead><tr>{% for c in cabecalhos %}<th>{{ c }}</th>{% endfor %}<th class="text-end">Ações</th></tr></thead>
+      <tbody>
+      {% for obj, valores in linhas %}
+        <tr>
+          {% for v in valores %}<td>{% if forloop.first and pode_editar %}<a href="{% url_pk url_editar obj.pk %}" class="fw-semibold text-decoration-none">{{ v }}</a>{% else %}{{ v }}{% endif %}</td>{% endfor %}
+          <td class="text-end text-nowrap">
+            {% for acao in cfg.acoes_linha %}
+              {% if acao.3 == 'post' %}
+                <form method="post" action="{% url_pk acao.0 obj.pk %}" class="d-inline">{% csrf_token %}
+                  <button class="btn btn-sm btn-light" title="{{ acao.2 }}"><i class="bi {{ acao.1 }}"></i></button></form>
+              {% else %}
+                <a href="{% url_pk acao.0 obj.pk %}" class="btn btn-sm btn-light" title="{{ acao.2 }}"><i class="bi {{ acao.1 }}"></i></a>
+              {% endif %}
+            {% endfor %}
+            {% if pode_editar %}
+              <a href="{% url_pk url_editar obj.pk %}" class="btn btn-sm btn-light" title="Editar"><i class="bi bi-pencil"></i></a>
+              {% if cfg.pode_excluir %}
+              <form method="post" action="{% url_pk url_excluir obj.pk %}" class="d-inline" data-confirm="Confirma a exclusão deste registro?">
+                {% csrf_token %}<button class="btn btn-sm btn-light text-danger" title="Excluir"><i class="bi bi-trash"></i></button></form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="{{ cabecalhos|length|add:1 }}"><div class="vazio"><i class="bi bi-inbox"></i>Nenhum registro encontrado.</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "_paginacao.html" %}
+{% endblock %}

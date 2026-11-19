@@ -1,0 +1,5 @@
+<div class="autocomplete position-relative" data-autocomplete="{{ widget.url }}" data-modo="{{ widget.modo }}" data-campo="{{ widget.campo_valor }}">
+  <input type="hidden" name="{{ widget.name }}" value="{{ widget.value|default_if_none:'' }}" data-ac-valor>
+  <input type="text" class="form-control" value="{{ widget.rotulo }}" id="{{ widget.attrs.id }}" placeholder="Digite para buscar..." autocomplete="off" data-ac-texto>
+  <div class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1060; max-height: 280px; overflow-y: auto;" data-ac-lista></div>
+</div>

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Pacote de sessões{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-stack"></i>Pacote: {{ pac.quantidade }}x {{ pac.tipo }}</h1><p>{{ pac.paciente.nome }} · comprado em {{ pac.data_compra|date:"d/m/Y" }}{% if pac.validade %} · válido até {{ pac.validade|date:"d/m/Y" }}{% endif %}</p></div>
+  <div class="d-flex gap-2">
+    {% if pode_agendar and pac.status == 'ativo' and pac.disponiveis %}<a href="{% url 'agenda:novo' %}?pacote={{ pac.pk }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Agendar sessão</a>{% endif %}
+    {% if pode_editar %}<a href="{% url 'agenda:pacote_editar' pac.pk %}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>{% endif %}
+    <a href="{% url 'agenda:pacote_list' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a>
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-stack"></i></div><div><div class="v">{{ pac.quantidade }}</div><div class="l">Sessões contratadas</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-check2-all"></i></div><div><div class="v">{{ pac.usadas }}</div><div class="l">Realizadas</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-calendar-check"></i></div><div><div class="v">{{ pac.agendadas }}</div><div class="l">Agendadas</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-hourglass-split"></i></div><div><div class="v">{{ pac.disponiveis }}</div><div class="l">Disponíveis p/ agendar</div></div></div></div>
+</div>
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between small mb-1"><span>Progresso: {{ pac.usadas }} de {{ pac.quantidade }} ({{ pac.percentual }}%)</span><span>Status: <b>{{ pac.get_status_display }}</b>{% if pac.vencido %} <span class="text-danger">(vencido)</span>{% endif %}</span></div>
+  <div class="progress" role="progressbar" aria-valuenow="{{ pac.percentual }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width: {{ pac.percentual }}%"></div></div>
+  <div class="small text-muted mt-2">Valor total {{ pac.valor_total|moeda }} · Faltas {% if pac.faltas_consomem %}consomem{% else %}não consomem{% endif %} sessão.</div>
+</div></div>
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-header">Sessões</div><div class="table-responsive"><table class="table table-sm">
+    <thead><tr><th>#</th><th>Data</th><th>Profissional</th><th>Status</th><th></th></tr></thead>
+    <tbody>{% for a in agendamentos %}<tr><td>{{ forloop.counter }}</td><td>{{ a.inicio|date:"d/m/Y H:i" }}</td><td>{{ a.medico }}</td><td><span class="badge-status" style="background: {{ a.cor }}">{{ a.get_status_display }}</span></td>
+      <td class="text-end"><a href="{% url 'agenda:detalhe' a.pk %}" class="btn btn-sm btn-light"><i class="bi bi-eye"></i></a></td></tr>
+    {% empty %}<tr><td colspan="5"><div class="vazio">Nenhuma sessão agendada.</div></td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header">Pagamentos</div><ul class="list-group list-group-flush">
+    {% for l in lancamentos %}<li class="list-group-item small d-flex justify-content-between"><span>{{ l.parcela|default:"Única" }} · venc. {{ l.vencimento|date:"d/m/Y" }}</span><span>{{ l.valor|moeda }} <span class="badge {% if l.status == 'pago' %}text-bg-success{% elif l.atrasado %}text-bg-danger{% else %}text-bg-warning{% endif %}">{{ l.situacao }}</span></span></li>
+    {% empty %}<li class="list-group-item small text-muted">Sem lançamentos vinculados.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}

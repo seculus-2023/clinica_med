@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Conexão do WhatsApp{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-whatsapp text-success"></i>Conexão do WhatsApp</h1>
+  <p>Número remetente: <b>{{ c.whatsapp|default:"não cadastrado" }}</b> · provedor: <b>{{ c.get_whatsapp_provedor_display }}</b></p></div>
+  <a href="{% url 'contas:configuracoes' %}" class="btn btn-light border"><i class="bi bi-gear"></i> Configurações</a></div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body text-center">
+    <div id="estado" class="alert {% if st.ok %}alert-success{% else %}alert-warning{% endif %}">
+      <i class="bi {% if st.ok %}bi-check-circle-fill{% else %}bi-exclamation-triangle{% endif %}"></i>
+      <b>{% if st.ok %}Conectado{% else %}Não conectado{% endif %}</b> — {{ st.detalhe }}</div>
+    {% if qr %}
+      <p class="mb-2">No celular da clínica: <b>WhatsApp › Aparelhos conectados › Conectar aparelho</b> e leia o código:</p>
+      <img id="qr" src="{% if 'data:' in qr %}{{ qr }}{% else %}data:image/png;base64,{{ qr }}{% endif %}" alt="QR Code do WhatsApp" style="width: 260px; max-width: 100%;">
+      {% if codigo %}<p class="mt-2">Ou use o código de pareamento: <b class="fs-5">{{ codigo }}</b></p>{% endif %}
+      <p class="small text-muted mt-2">O código é atualizado automaticamente.</p>
+    {% endif %}
+    {% if st.ok and c.whatsapp_provedor == 'evolution' %}
+      <form method="post" action="{% url 'notificacoes:desconectar' %}" data-confirm="Desconectar o WhatsApp da clínica?">{% csrf_token %}
+        <button class="btn btn-outline-danger"><i class="bi bi-plug"></i> Desconectar</button></form>{% endif %}
+    <a href="{% url 'notificacoes:lista' %}" class="btn btn-primary mt-2"><i class="bi bi-send"></i> Enviar mensagem de teste</a>
+  </div></div></div>
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header">Como conectar</div><div class="card-body small">
+    <p><b>Evolution API</b> (gratuita, você hospeda — recomendada): instale a Evolution API num servidor (Docker), depois em
+      <i>Configurações da clínica</i> escolha o provedor <b>Evolution API</b>, informe a <b>URL</b> (ex.: <code>https://whatsapp.seudominio.com.br</code>)
+      e a <b>API key</b> (AUTHENTICATION_API_KEY). A instância usa o nome <code>{{ instancia }}</code>. Volte aqui e leia o QR Code.</p>
+    <p><b>Z-API</b> (serviço pago brasileiro): crie a instância no painel da Z-API, conecte o número por lá e informe a URL
+      <code>https://api.z-api.io/instances/SUA_INSTANCIA/token/SEU_TOKEN</code> e o <b>Client-Token</b> da conta.</p>
+    <p><b>WhatsApp Cloud API (Meta)</b>: crie um app no Meta for Developers, adicione o produto WhatsApp, registre o número da
+      clínica e informe o <b>Phone Number ID</b> (campo Instância) e um <b>token permanente</b>. Atenção: para iniciar conversas
+      fora da janela de 24h a Meta exige <b>modelos de mensagem aprovados</b>.</p>
+    <p class="mb-0"><b>Webhook</b>: o sistema faz POST JSON <code>{remetente, telefone, mensagem, clinica}</code> na URL informada
+      (para integrar com n8n, Make, um bot próprio etc.).</p>
+  </div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if qr and not st.ok %}
+<script>
+setInterval(function () {
+  fetch('?json=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+    if (d.status.ok) { location.reload(); return; }
+    if (d.qr) { document.getElementById('qr').src = d.qr.indexOf('data:') === 0 ? d.qr : 'data:image/png;base64,' + d.qr; }
+  });
+}, 20000);
+</script>
+{% endif %}
+{% endblock %}

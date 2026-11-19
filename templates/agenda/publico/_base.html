@@ -1,0 +1,24 @@
+{% load static %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>{% block titulo %}{% endblock %} | {{ c.nome }}</title>
+<style>
+  .pub { min-height: 100vh; background: linear-gradient(180deg, #0b1f24 0, #12303a 240px, #f2f6f7 240px); padding: 1.5rem 1rem 3rem; }
+  .pub .box { max-width: 1120px; margin: 0 auto; }
+  .pub .top { color: #fff; display: flex; align-items: center; gap: .8rem; margin-bottom: 1.2rem; }
+  .pub .top img { width: 48px; height: 48px; border-radius: 12px; }
+  .slot { min-width: 86px; }
+  .escala { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .escala label { border: 1px solid var(--ma-border); border-radius: 8px; padding: .4rem .7rem; cursor: pointer; min-width: 42px; text-align: center; }
+  .escala input { position: absolute; opacity: 0; pointer-events: none; }
+  .escala input:checked + span { font-weight: 700; color: #fff; }
+  .escala label:has(input:checked) { background: var(--ma-primary); border-color: var(--ma-primary); color: #fff; }
+</style></head>
+<body><main class="pub"><div class="box">
+  {% with cl=c %}
+  <div class="top">{% if cl.logo %}<img src="{{ cl.logo.url }}" alt="">{% else %}<img src="{% static 'icons/icon-192.png' %}" alt="">{% endif %}
+    <div><div class="fw-bold fs-5">{{ cl.nome }}</div><div class="small opacity-75">{{ cl.endereco }} {{ cl.cidade }}{% if cl.uf %}/{{ cl.uf }}{% endif %}{% if cl.whatsapp %} · WhatsApp {{ cl.whatsapp }}{% endif %}</div></div></div>
+  {% endwith %}
+  {% block conteudo %}{% endblock %}
+  <p class="text-center small text-muted mt-4">Seus dados são protegidos conforme a LGPD.</p>
+</div></main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

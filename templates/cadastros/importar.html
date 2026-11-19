@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-cloud-arrow-up"></i>{{ titulo }}</h1>
+  <a href="{% url voltar %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a></div>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <form method="post" enctype="multipart/form-data" class="card" novalidate data-importar>{% csrf_token %}
+      <div class="card-body"><div class="row g-3">{% for f in form %}{% include "_campo.html" with col="col-12" %}{% endfor %}</div></div>
+      <div class="card-footer bg-transparent text-end"><button class="btn btn-primary" id="btnImportar"><i class="bi bi-upload"></i> Importar</button></div>
+    </form>
+  </div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Onde obter o arquivo</div><div class="card-body small">
+    {% if instrucoes == 'cmed' %}
+      <ol class="ps-3 mb-2">
+        <li>Acesse o portal da ANVISA: <b>gov.br/anvisa › Medicamentos › CMED › Preços</b> (Listas de preços de medicamentos).</li>
+        <li>Baixe a <b>"Lista de preços de medicamentos — Preço Fábrica e Preço Máximo ao Consumidor"</b> em formato planilha (.xls/.xlsx).</li>
+        <li>Envie o arquivo aqui e escolha a alíquota de ICMS do seu estado.</li>
+      </ol>
+      <p class="mb-1">São importados: substância, laboratório, CNPJ, código GGREM, registro ANVISA, EAN, produto, apresentação, classe terapêutica, tipo de produto, regime de preço, <b>PF</b>, <b>PMC</b>, restrição hospitalar e tarja (tarja preta/restrição marca como controlado).</p>
+      <p class="mb-0 text-muted">A atualização é mensal: importe novamente para atualizar os preços (o registro é localizado pelo código GGREM/EAN).</p>
+    {% elif instrucoes == 'sigtap' %}
+      <ol class="ps-3 mb-2">
+        <li>Acesse <b>sigtap.datasus.gov.br</b> › <b>Tabela Unificada</b> › <b>Download</b> (ou o FTP do DATASUS).</li>
+        <li>Baixe o ZIP da competência vigente (ex.: <code>TabelaUnificada_202611_v...zip</code>).</li>
+        <li>Envie o ZIP inteiro — o sistema lê <code>tb_procedimento.txt</code> usando o layout oficial.</li>
+      </ol>
+      <p class="mb-1">São importados código, nome, complexidade, sexo, idades e valores SH/SA/SP. Procedimentos que saírem da tabela vigente são inativados.</p>
+      <p class="mb-0">Para <b>TUSS/CBHPM</b> ou tabela própria, envie um CSV com as colunas <code>codigo;nome;valor</code>.</p>
+    {% elif instrucoes == 'interacoes' %}
+      <p>Marque <b>carregar a base inicial</b> para incluir ~30 interações clinicamente relevantes (anticoagulantes, nitratos x
+        inibidores da PDE5, ISRS x IMAO, estatinas x macrolídeos/azólicos, IECA/BRA x poupadores de potássio, opioides x
+        benzodiazepínicos, lítio, digoxina, metotrexato, contraceptivos x indutores enzimáticos e outras).</p>
+      <p class="mb-1">Para ampliar, importe um CSV com <code>substancia_a;substancia_b;gravidade;efeito;conduta</code>. Use termos do
+        princípio ativo separados por vírgula (ex.: <code>ibuprofeno, naproxeno</code>).</p>
+      <p class="mb-0 text-danger">Ferramenta de apoio: não substitui bulas, compêndios licenciados nem a avaliação do prescritor/farmacêutico.</p>
+    {% else %}
+      <p class="fw-semibold mb-1">CID-11</p>
+      <ol class="ps-3 mb-3">
+        <li>No site da OMS (<b>icd.who.int</b>), na área de downloads da classificação <b>ICD-11 MMS</b>, baixe a planilha <b>"Simple Tabulation"</b>.</li>
+        <li>Envie o arquivo (ZIP, .txt ou .xlsx — com as colunas <code>Code</code> e <code>Title</code>) escolhendo a versão <b>CID-11</b>.</li>
+        <li>Também é aceito CSV <code>codigo;descricao</code> (ex.: tradução em português).</li>
+      </ol>
+      <p class="fw-semibold mb-1">CID-10</p>
+      <ol class="ps-3 mb-2">
+        <li>Acesse o DATASUS: <b>datasus.saude.gov.br › CID-10</b> (arquivos em formato CSV).</li>
+        <li>Baixe o <code>CID10CSV.zip</code> e envie aqui. São lidos <code>CID-10-CATEGORIAS.CSV</code> e <code>CID-10-SUBCATEGORIAS.CSV</code>.</li>
+      </ol>
+      <p class="mb-0">Também é aceito um CSV com as colunas <code>codigo;descricao</code> (útil para CID-11 ou listas próprias).</p>
+    {% endif %}
+  </div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelector('[data-importar]').addEventListener('submit', function () {
+  var b = document.getElementById('btnImportar');
+  b.disabled = true; b.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importando... (pode levar alguns minutos)';
+});
+</script>
+{% endblock %}

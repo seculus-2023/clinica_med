@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Perfil de acesso{% endblock %}
+{% block conteudo %}
+<div class="page-head"><h1><i class="bi bi-shield-lock"></i>{% if obj %}Editar perfil{% else %}Novo perfil{% endif %}</h1>
+  <a href="{% url 'contas:perfis' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a></div>
+<form method="post" class="card" novalidate>{% csrf_token %}
+  <div class="card-body">
+    <div class="row g-3 mb-4">
+      {% include "_campo.html" with f=form.nome col="col-md-4" %}
+      {% include "_campo.html" with f=form.descricao col="col-md-8" %}
+      {% include "_campo.html" with f=form.apenas_propria_agenda col="col-12" %}
+    </div>
+    <h2 class="h6 fw-bold">Permissões por módulo</h2>
+    <div class="table-responsive"><table class="table">
+      <thead><tr><th>Módulo</th><th style="width: 260px;">Nível de acesso</th></tr></thead>
+      <tbody>{% for f in form.campos_permissao %}<tr><td>{{ f.label }}</td><td>{{ f }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  <div class="card-footer bg-transparent text-end"><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar</button></div>
+</form>
+{% endblock %}

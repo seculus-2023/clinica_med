@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Conciliação bancária{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-check2-square"></i>Conciliação bancária</h1>
+    <p>Importe o extrato e confira cada movimento com os lançamentos do sistema.</p></div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if contas|length > 1 %}<form><select class="form-select" onchange="location='/financeiro/conciliacao/'+this.value+'/'" aria-label="Conta">
+      {% for c in contas %}<option value="{{ c.pk }}" {% if c.pk == conta.pk %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select></form>{% endif %}
+    <a href="{% url 'financeiro:conta_list' %}" class="btn btn-light border"><i class="bi bi-bank"></i> Contas</a>
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-bank"></i></div><div><div class="v">{{ saldo_extrato|moeda }}</div><div class="l">{{ conta.nome }} — saldo pelo extrato</div></div></div></div>
+  <div class="col-6 col-md-4"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-hourglass-split"></i></div><div><div class="v">{{ pendentes }}</div><div class="l">Pendentes de conciliação</div></div></div></div>
+  <div class="col-6 col-md-4"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-check2-all"></i></div><div><div class="v">{{ total|add:0 }}</div><div class="l">Transações importadas</div></div></div></div>
+</div>
+{% if perm|edita:'financeiro' %}
+<form method="post" enctype="multipart/form-data" class="card mb-3" novalidate>{% csrf_token %}
+  <div class="card-body filtros">
+    <div style="flex: 1 1 320px;">{% include "_campo.html" with f=form.arquivo col="" %}</div>
+    <button class="btn btn-primary"><i class="bi bi-upload"></i> Importar extrato</button>
+  </div></form>{% endif %}
+<ul class="nav nav-pills mb-2">
+  <li class="nav-item"><a class="nav-link {% if ver == 'pendentes' %}active{% endif %}" href="?ver=pendentes">Pendentes</a></li>
+  <li class="nav-item"><a class="nav-link {% if ver == 'conciliadas' %}active{% endif %}" href="?ver=conciliadas">Conciliadas</a></li>
+  <li class="nav-item"><a class="nav-link {% if ver == 'todas' %}active{% endif %}" href="?ver=todas">Todas</a></li>
+</ul>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle">
+  <thead><tr><th>Data</th><th>Descrição no extrato</th><th class="num">Valor</th><th>Lançamento do sistema</th><th class="text-end">Ações</th></tr></thead>
+  <tbody>{% for t, sug in linhas %}
+    <tr {% if t.ignorada %}class="text-muted"{% endif %}><td>{{ t.data|date:"d/m/Y" }}</td><td class="small">{{ t.descricao|default:"-" }}</td>
+      <td class="num fw-semibold {% if t.valor < 0 %}text-danger{% else %}text-success{% endif %}">{{ t.valor|moeda }}</td>
+      <td class="small">
+        {% if t.lancamento %}<i class="bi bi-check-circle-fill text-success"></i> <a href="{% url 'financeiro:lancamento_editar' t.lancamento.pk %}">{{ t.lancamento.descricao }}</a> ({{ t.lancamento.vencimento|date:"d/m" }})
+        {% elif t.ignorada %}Ignorada
+        {% elif sug %}{% for l in sug %}
+          <form method="post" action="{% url 'financeiro:transacao_acao' t.pk %}" class="d-flex gap-1 align-items-center mb-1">{% csrf_token %}
+            <input type="hidden" name="acao" value="conciliar"><input type="hidden" name="lancamento" value="{{ l.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <span>{{ l.descricao|truncatechars:40 }} · venc. {{ l.vencimento|date:"d/m" }} · {{ l.situacao }}</span>
+            {% if perm|edita:'financeiro' %}<button class="btn btn-sm btn-outline-success py-0">Conciliar</button>{% endif %}</form>
+        {% endfor %}
+        {% else %}<span class="text-warning-emphasis">Nenhum lançamento correspondente</span>{% endif %}
+      </td>
+      <td class="text-end text-nowrap">{% if perm|edita:'financeiro' %}
+        <form method="post" action="{% url 'financeiro:transacao_acao' t.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if t.lancamento or t.ignorada %}<button name="acao" value="desfazer" class="btn btn-sm btn-light" title="Desfazer"><i class="bi bi-arrow-counterclockwise"></i></button>
+          {% else %}<button name="acao" value="criar" class="btn btn-sm btn-light" title="Criar lançamento a partir do extrato"><i class="bi bi-plus-circle"></i></button>
+            <button name="acao" value="ignorar" class="btn btn-sm btn-light" title="Ignorar (tarifa, transferência entre contas...)"><i class="bi bi-eye-slash"></i></button>{% endif %}
+        </form>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5"><div class="vazio"><i class="bi bi-inbox"></i>Nenhuma transação{% if ver == 'pendentes' %} pendente{% endif %}.</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

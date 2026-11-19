@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cfg.nome }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <h1><i class="bi {{ cfg.icone }}"></i>{% if object %}Editar{% else %}Novo(a){% endif %} {{ cfg.nome|lower }}</h1>
+  <a href="{% if cfg.url_sucesso %}{% url cfg.url_sucesso %}{% else %}{% url url_list %}{% endif %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a>
+</div>
+<form method="post" enctype="multipart/form-data" class="card" novalidate>
+  {% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="row g-3">
+      {% for f in form %}
+        {% if f.widget_type == 'textarea' or f.widget_type == 'checkboxselectmultiple' %}{% include "_campo.html" with col="col-12" %}
+        {% else %}{% include "_campo.html" with col="col-md-6 col-xl-4" %}{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card-footer bg-transparent d-flex gap-2 justify-content-end">
+    <button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% load static %}<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prontuário - {{ p.nome }}</title>
+<style>
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #111; margin: 24px; font-size: 12.5px; background: #fff; }
+  h1 { font-size: 18px; margin: 0; } h2 { font-size: 14px; border-bottom: 2px solid #139e86; padding-bottom: 3px; margin: 18px 0 8px; }
+  h3 { font-size: 13px; margin: 10px 0 4px; } .muted { color: #555; } .bloco { page-break-inside: avoid; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+  .cab { display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 8px; } pre { white-space: pre-wrap; font-family: inherit; margin: 0; }
+  .alerta { color: #b91c1c; font-weight: bold; } table { width: 100%; border-collapse: collapse; } td, th { border: 1px solid #ddd; padding: 3px 5px; text-align: left; }
+  .no-print { margin-bottom: 12px; } @media print { .no-print { display: none; } body { margin: 10mm; } }
+</style></head>
+<body>
+<div class="no-print"><button onclick="window.print()">Imprimir</button></div>
+<div class="cab"><div><h1>{{ c.nome }}</h1><div class="muted">{{ c.endereco }} {{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %} · {{ c.telefone }}</div></div>
+  <div class="muted" style="text-align: right;">PRONTUÁRIO DO PACIENTE<br>Emitido em {{ agora|date:"d/m/Y H:i" }} por {{ user }}</div></div>
+<h2>Identificação</h2>
+<div><b>{{ p.nome }}</b>{% if p.data_nascimento %} · nasc. {{ p.data_nascimento|date:"d/m/Y" }} ({{ p.idade }} anos){% endif %}{% if p.sexo %} · {{ p.get_sexo_display }}{% endif %}{% if p.cpf %} · CPF {{ p.cpf }}{% endif %}{% if p.convenio %} · {{ p.convenio }} {{ p.carteirinha }}{% endif %}</div>
+{% if hist.alergias or p.alergias %}<div class="alerta">ALERGIAS: {{ hist.alergias|default:p.alergias }}</div>{% endif %}
+{% if hist %}<h2>Histórico clínico</h2>
+<table><tbody>
+  <tr><th style="width: 28%;">Tipo sanguíneo</th><td>{{ hist.tipo_sanguineo|default:"-" }}</td></tr>
+  <tr><th>Doenças crônicas</th><td><pre>{{ hist.doencas_cronicas|default:"-" }}</pre></td></tr>
+  <tr><th>Medicamentos em uso</th><td><pre>{{ hist.medicamentos_uso|default:"-" }}</pre></td></tr>
+  <tr><th>Antecedentes pessoais</th><td><pre>{{ hist.antecedentes_pessoais|default:"-" }}</pre></td></tr>
+  <tr><th>Cirurgias / internações</th><td><pre>{{ hist.cirurgias|default:"-" }} {{ hist.internacoes }}</pre></td></tr>
+  <tr><th>Antecedentes familiares</th><td><pre>{{ hist.antecedentes_familiares|default:"-" }}</pre></td></tr>
+  <tr><th>Hábitos</th><td>Tabagismo: {{ hist.get_tabagismo_display|default:"-" }}; Etilismo: {{ hist.get_etilismo_display|default:"-" }}; Atividade física: {{ hist.atividade_fisica|default:"-" }}</td></tr>
+  <tr><th>Gineco-obstétrico</th><td><pre>{{ hist.gineco_obstetrico|default:"-" }}</pre></td></tr>
+  <tr><th>Vacinação</th><td><pre>{{ hist.vacinacao|default:"-" }}</pre></td></tr>
+</tbody></table>{% endif %}
+<h2>Atendimentos ({{ atendimentos|length }})</h2>
+{% for a in atendimentos %}<div class="bloco">
+  <b>{{ a.data|date:"d/m/Y H:i" }} — {{ a.get_tipo_display }} — {{ a.medico }} {{ a.medico.registro_completo }}</b> {% if not a.finalizado %}<i>(não finalizado)</i>{% endif %}
+  {% if a.queixa_principal %}<h3>Queixa principal</h3><pre>{{ a.queixa_principal }}</pre>{% endif %}
+  {% if a.hda %}<h3>HDA</h3><pre>{{ a.hda }}</pre>{% endif %}
+  {% if a.tem_sinais_vitais %}<h3>Sinais vitais</h3>{% if a.pa %}PA {{ a.pa }} · {% endif %}{% if a.fc %}FC {{ a.fc }} · {% endif %}{% if a.temperatura %}T {{ a.temperatura }}°C · {% endif %}{% if a.spo2 %}SpO₂ {{ a.spo2 }}% · {% endif %}{% if a.peso %}Peso {{ a.peso }}kg · {% endif %}{% if a.imc %}IMC {{ a.imc }}{% endif %}{% endif %}
+  {% for item in a.respostas.campos %}{% if item.valor %}{% if forloop.first %}<h3>{{ a.respostas.modelo|default:"Campos específicos" }}</h3>{% endif %}<div>{{ item.rotulo }}: <b>{{ item.valor }}</b></div>{% endif %}{% endfor %}
+  {% if a.exame_fisico %}<h3>Exame físico</h3><pre>{{ a.exame_fisico }}</pre>{% endif %}
+  {% if a.cid_principal or a.hipotese_diagnostica %}<h3>Avaliação</h3>{% if a.cid_principal %}CID: {{ a.cid_principal }}{% for c in a.cids_secundarios.all %}; {{ c }}{% endfor %}<br>{% endif %}<pre>{{ a.hipotese_diagnostica }}</pre>{% endif %}
+  {% if a.conduta %}<h3>Conduta</h3><pre>{{ a.conduta }}</pre>{% endif %}
+  {% if a.exames_solicitados %}<h3>Exames solicitados</h3><pre>{{ a.exames_solicitados }}</pre>{% endif %}
+  {% for ad in a.adendos.all %}<h3>Adendo {{ ad.criado_em|date:"d/m/Y H:i" }} ({{ ad.autor }})</h3><pre>{{ ad.texto }}</pre>{% endfor %}
+  {% if a.finalizado_em %}<div class="muted" style="margin-top: 4px;">Assinado eletronicamente em {{ a.finalizado_em|date:"d/m/Y H:i" }}</div>{% endif %}
+</div>{% empty %}<p class="muted">Nenhum atendimento.</p>{% endfor %}
+<h2>Prescrições e documentos</h2>
+{% for d in documentos %}<div class="bloco"><b>{{ d.data|date:"d/m/Y" }} — {{ d.titulo_exibicao }}</b> ({{ d.medico }})
+  {% for i in d.itens.all %}<div>• {{ i.nome }} {% if i.quantidade %}— {{ i.quantidade }}{% endif %} {{ i.posologia }}</div>{% endfor %}
+  {% if d.conteudo %}<pre>{{ d.conteudo }}</pre>{% endif %}</div>{% empty %}<p class="muted">Nenhum.</p>{% endfor %}
+{% if lab.linhas %}<h2>Exames laboratoriais</h2>
+<table><thead><tr><th>Exame</th><th>Ref.</th>{% for d in lab.datas %}<th>{{ d|date:"d/m/y" }}</th>{% endfor %}</tr></thead><tbody>
+{% for l in lab.linhas %}<tr><td>{{ l.exame.nome }} ({{ l.exame.unidade }})</td><td>{{ l.exame.referencia }}</td>{% for r in l.celulas %}<td>{% if r %}{{ r.valor_fmt }}{% if r.situacao == 'alto' %} ↑{% elif r.situacao == 'baixo' %} ↓{% endif %}{% endif %}</td>{% endfor %}</tr>{% endfor %}
+</tbody></table>{% endif %}
+<h2>Exames e anexos</h2>
+{% for x in anexos %}<div class="bloco"><b>{{ x.data|date:"d/m/Y" }} — {{ x.get_tipo_display }}: {{ x.titulo }}</b>{% if x.resultado %}<pre>{{ x.resultado }}</pre>{% endif %}</div>{% empty %}<p class="muted">Nenhum.</p>{% endfor %}
+<p class="muted" style="margin-top: 20px;">Documento confidencial. Uso restrito ao paciente e aos profissionais envolvidos no atendimento (CFM / LGPD).</p>
+</body></html>

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Dashboard{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-grid-1x2"></i>Olá, {{ user.first_name|default:user.username }}</h1><p>{{ hoje|date:"l, d \d\e F \d\e Y" }} · {{ request.clinica.nome }}</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if perm|edita:'agenda' %}<a href="{% url 'agenda:marcar' %}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Marcar consulta</a>{% endif %}
+    {% if perm|pode:'agenda' %}<a href="{% url 'agenda:dia' %}" class="btn btn-outline-primary"><i class="bi bi-list-check"></i> Agenda do dia</a>{% endif %}
+  </div>
+</div>
+
+<h2 class="h6 text-muted text-uppercase mb-2">Agenda de hoje</h2>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xl-2"><a class="kpi-link" href="{% url 'agenda:dia' %}"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-calendar-check"></i></div><div><div class="v">{{ k_agenda.total }}</div><div class="l">Atendimentos</div></div></div></a></div>
+  <div class="col-6 col-md-4 col-xl-2"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-check2-all"></i></div><div><div class="v">{{ k_agenda.confirmados }}</div><div class="l">Confirmados</div></div></div></div>
+  <div class="col-6 col-md-4 col-xl-2"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-question-circle"></i></div><div><div class="v">{{ k_agenda.a_confirmar }}</div><div class="l">A confirmar</div></div></div></div>
+  <div class="col-6 col-md-4 col-xl-2"><div class="card kpi"><div class="ic ic-violet"><i class="bi bi-person-check"></i></div><div><div class="v">{{ k_agenda.aguardando }}</div><div class="l">Na clínica</div></div></div></div>
+  <div class="col-6 col-md-4 col-xl-2"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-check-circle"></i></div><div><div class="v">{{ k_agenda.concluidos }}</div><div class="l">Concluídos</div></div></div></div>
+  <div class="col-6 col-md-4 col-xl-2"><div class="card kpi"><div class="ic ic-red"><i class="bi bi-person-x"></i></div><div><div class="v">{{ k_agenda.faltas }}</div><div class="l">Faltas</div></div></div></div>
+</div>
+
+{% if ver_financeiro %}
+<h2 class="h6 text-muted text-uppercase mb-2">Financeiro do mês</h2>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl"><a class="kpi-link" href="{% url 'financeiro:lancamentos' %}?tipo=receita&status=pago"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-cash-stack"></i></div><div><div class="v">{{ k_fin.recebido|moeda }}</div><div class="l">Recebido</div></div></div></a></div>
+  <div class="col-6 col-xl"><a class="kpi-link" href="{% url 'financeiro:lancamentos' %}?tipo=receita&status=pendente"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-hourglass-split"></i></div><div><div class="v">{{ k_fin.receber|moeda }}</div><div class="l">A receber</div></div></div></a></div>
+  <div class="col-6 col-xl"><a class="kpi-link" href="{% url 'financeiro:lancamentos' %}?tipo=despesa"><div class="card kpi"><div class="ic ic-red"><i class="bi bi-receipt"></i></div><div><div class="v">{{ k_fin.despesas|moeda }}</div><div class="l">Despesas</div></div></div></a></div>
+  <div class="col-6 col-xl"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-wallet2"></i></div><div><div class="v {% if k_fin.saldo < 0 %}text-danger{% endif %}">{{ k_fin.saldo|moeda }}</div><div class="l">Saldo realizado</div></div></div></div>
+  <div class="col-12 col-xl"><a class="kpi-link" href="{% url 'financeiro:lancamentos' %}?status=atrasado&de=2000-01-01"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-exclamation-triangle"></i></div><div><div class="v">{{ k_fin.atrasados|moeda }}</div><div class="l">Recebimentos em atraso</div></div></div></a></div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><a class="kpi-link" href="{% url 'cadastros:paciente_list' %}"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-people"></i></div><div><div class="v">{{ pacientes_ativos }}</div><div class="l">Pacientes ativos · {{ pacientes_novos }} novos no mês</div></div></div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi-link" href="{% url 'agenda:pacote_list' %}?status=ativo"><div class="card kpi"><div class="ic ic-violet"><i class="bi bi-stack"></i></div><div><div class="v">{{ pacotes_ativos }}</div><div class="l">Pacotes de sessões ativos</div></div></div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi-link" href="{% url 'callcenter:fila' %}"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-headset"></i></div><div><div class="v">{{ callcenter }}</div><div class="l">Contatos para hoje</div></div></div></a></div>
+  <div class="col-6 col-lg-3"><a class="kpi-link" href="{% url 'estoque:produto_list' %}?baixo=1"><div class="card kpi"><div class="ic {% if estoque_baixo %}ic-red{% else %}ic-green{% endif %}"><i class="bi bi-box-seam"></i></div><div><div class="v">{{ estoque_baixo }}</div><div class="l">Itens com estoque baixo</div></div></div></a></div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8"><div class="card h-100"><div class="card-header">Atendimentos — últimos 30 dias</div><div class="card-body"><div style="height: 260px;"><canvas id="gDias"></canvas></div></div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Status no mês</div><div class="card-body"><div style="height: 260px;"><canvas id="gStatus"></canvas></div></div></div></div>
+  {% if ver_financeiro %}<div class="col-lg-8"><div class="card h-100"><div class="card-header">Receitas x despesas (realizado)</div><div class="card-body"><div style="height: 260px;"><canvas id="gFin"></canvas></div></div></div></div>{% endif %}
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Atendimentos por profissional (mês)</div><div class="card-body"><div style="height: 260px;"><canvas id="gMed"></canvas></div></div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-header">Próximos atendimentos</div><div class="table-responsive"><table class="table table-sm table-hover mb-0">
+    <tbody>{% for a in proximos %}<tr><td class="text-nowrap">{{ a.inicio|date:"d/m H:i" }}</td><td><a href="{% url 'agenda:detalhe' a.pk %}">{{ a.paciente }}</a></td><td class="small">{{ a.tipo }}</td><td class="small">{{ a.medico }}</td><td><span class="badge-status" style="background: {{ a.cor }}">{{ a.get_status_display }}</span></td></tr>
+    {% empty %}<tr><td class="text-muted small p-3">Nenhum atendimento agendado.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-header">Pacotes terminando (renovar)</div><ul class="list-group list-group-flush">
+    {% for p in pacotes_acabando %}<li class="list-group-item small d-flex justify-content-between"><a href="{% url 'agenda:pacote_detalhe' p.pk %}">{{ p.paciente }} — {{ p.tipo }}</a><span class="badge text-bg-warning">{{ p.restantes }} restante(s)</span></li>
+    {% empty %}<li class="list-group-item small text-muted">Nenhum pacote no fim.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var g = {{ graf|safe }};
+  Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+  var base = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+  new Chart(document.getElementById('gDias'), { type: 'bar', data: { labels: g.dias, datasets: [{ label: 'Atendimentos', data: g.atend, backgroundColor: '#2bc4a6', borderRadius: 4 }] },
+    options: Object.assign({}, base, { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } }) });
+  new Chart(document.getElementById('gStatus'), { type: 'doughnut', data: { labels: g.status.map(function (s) { return s[0]; }),
+    datasets: [{ data: g.status.map(function (s) { return s[1]; }), backgroundColor: g.status.map(function (s) { return s[2]; }) }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10 } } } } });
+  new Chart(document.getElementById('gMed'), { type: 'bar', data: { labels: g.medicos.map(function (m) { return m[0]; }),
+    datasets: [{ data: g.medicos.map(function (m) { return m[1]; }), backgroundColor: '#139e86', borderRadius: 4 }] },
+    options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }) });
+  var f = document.getElementById('gFin');
+  if (f && g.meses) new Chart(f, { type: 'bar', data: { labels: g.meses, datasets: [
+    { label: 'Receitas', data: g.receitas, backgroundColor: '#139e86', borderRadius: 4 },
+    { label: 'Despesas', data: g.despesas, backgroundColor: '#f87171', borderRadius: 4 }] },
+    options: Object.assign({}, base, { plugins: { legend: { position: 'bottom' } } }) });
+})();
+</script>
+{% endblock %}

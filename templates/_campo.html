@@ -1,0 +1,18 @@
+{% if f.is_hidden %}{{ f }}{% else %}
+<div class="{{ col|default:'col-md-6' }} {% if f.errors %}campo-erro{% endif %}">
+  {% if f.widget_type == 'checkbox' %}
+    <div class="form-check mt-md-4 pt-md-1">
+      {{ f }} <label class="form-check-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+    </div>
+  {% elif f.widget_type == 'checkboxselectmultiple' %}
+    <label class="form-label d-block">{{ f.label }}</label>
+    <div class="d-flex flex-wrap gap-3">
+      {% for op in f %}<div class="form-check">{{ op.tag }}<label class="form-check-label" for="{{ op.id_for_label }}">{{ op.choice_label }}</label></div>{% empty %}<span class="text-muted small">Nenhuma opção cadastrada.</span>{% endfor %}
+    </div>
+  {% else %}
+    <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}{% if f.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+    {{ f }}
+  {% endif %}
+  {% if f.help_text %}<div class="form-text">{{ f.help_text|safe }}</div>{% endif %}
+  {% if f.errors %}<ul class="errorlist">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+</div>{% endif %}

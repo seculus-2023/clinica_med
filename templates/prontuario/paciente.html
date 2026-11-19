@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Prontuário - {{ p.nome }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-journal-medical"></i>Prontuário{% if modo_consulta %} <span class="badge text-bg-secondary fs-6"><i class="bi bi-eye"></i> Somente consulta</span>{% endif %}</h1>
+    <p>Registro clínico completo do paciente.</p></div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if pode_editar %}
+      <a href="{% url 'prontuario:atendimento_novo' p.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Novo atendimento</a>
+      <a href="{% url 'prontuario:anexo_novo' p.pk %}" class="btn btn-outline-primary"><i class="bi bi-paperclip"></i> Exame / anexo</a>
+      {% if pode_documentos %}<a href="{% url 'documentos:documento_novo' %}?paciente={{ p.pk }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-medical"></i> Receita / atestado</a>{% endif %}
+    {% endif %}
+    <a href="{% url 'prontuario:imprimir' p.pk %}" target="_blank" class="btn btn-light"><i class="bi bi-printer"></i> Imprimir</a>
+    {% if perm|pode:'administrativo' %}<a href="{% url 'prontuario:auditoria' p.pk %}" class="btn btn-light" title="Auditoria de acessos"><i class="bi bi-shield-check"></i></a>{% endif %}
+  </div>
+</div>
+
+{% include "prontuario/_cabecalho.html" %}
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#linha" type="button">Linha do tempo</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#historico" type="button">Histórico clínico</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#atendimentos" type="button">Atendimentos ({{ atendimentos|length }})</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#vitais" type="button">Sinais vitais</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#documentos" type="button">Prescrições e documentos ({{ documentos|length }})</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#laboratorio" type="button">Exames laboratoriais</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#exames" type="button">Exames e anexos ({{ anexos|length }})</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#agenda" type="button">Agenda</button></li>
+</ul>
+
+<div class="tab-content">
+  <!-- Linha do tempo -->
+  <div class="tab-pane fade show active" id="linha">
+    <div class="row g-3">
+      <div class="col-lg-8"><div class="card"><div class="card-body">
+        {% for tipo, data, obj in linha %}
+          <div class="timeline-item">
+            <div class="small text-muted">{{ data|date:"d/m/Y H:i" }}</div>
+            {% if tipo == 'atendimento' %}
+              <a href="{% url 'prontuario:atendimento' obj.pk %}" class="fw-semibold text-decoration-none"><i class="bi bi-clipboard2-pulse"></i> {{ obj.get_tipo_display }} — {{ obj.medico }}</a>
+              {% if not obj.finalizado %}<span class="badge text-bg-warning">em andamento</span>{% endif %}
+              {% if obj.queixa_principal %}<div class="small"><b>QP:</b> {{ obj.queixa_principal|truncatechars:160 }}</div>{% endif %}
+              {% if obj.cid_principal %}<div class="small"><b>CID:</b> {{ obj.cid_principal }}</div>{% endif %}
+              {% if obj.conduta %}<div class="small"><b>Conduta:</b> {{ obj.conduta|truncatechars:160 }}</div>{% endif %}
+            {% elif tipo == 'documento' %}
+              <a href="{% url 'documentos:imprimir' obj.pk %}" target="_blank" class="fw-semibold text-decoration-none"><i class="bi bi-file-earmark-medical"></i> {{ obj.titulo_exibicao }} — {{ obj.medico }}</a>
+              {% for i in obj.itens.all %}<div class="small">• {{ i.nome }} {{ i.posologia }}</div>{% endfor %}
+            {% else %}
+              <span class="fw-semibold"><i class="bi bi-paperclip"></i> {{ obj.get_tipo_display }}: {{ obj.titulo }}</span>
+              {% if obj.arquivo %}<a href="{% url 'prontuario:anexo_arquivo' obj.pk %}" target="_blank" class="small ms-1">abrir arquivo</a>{% endif %}
+              {% if obj.resultado %}<div class="small">{{ obj.resultado|truncatechars:160 }}</div>{% endif %}
+            {% endif %}
+          </div>
+        {% empty %}<div class="vazio"><i class="bi bi-journal"></i>Nenhum registro clínico ainda.</div>{% endfor %}
+      </div></div></div>
+      <div class="col-lg-4">
+        <div class="card mb-3"><div class="card-header">Diagnósticos (CID) registrados</div>
+          <ul class="list-group list-group-flush">{% for c in cids %}<li class="list-group-item small d-flex justify-content-between"><span><b>{{ c.cid.codigo }}</b> {{ c.cid.nome|truncatechars:50 }}</span><span class="badge text-bg-light border">{{ c.n }}x</span></li>{% empty %}<li class="list-group-item small text-muted">Nenhum.</li>{% endfor %}</ul></div>
+        {% if ultimo_vital %}<div class="card mb-3"><div class="card-header">Últimos sinais vitais <small class="text-muted">({{ ultimo_vital.data|date:"d/m/Y" }})</small></div>
+          <div class="card-body small row g-2">
+            {% if ultimo_vital.pa %}<div class="col-6"><b>PA</b> {{ ultimo_vital.pa }} mmHg</div>{% endif %}
+            {% if ultimo_vital.fc %}<div class="col-6"><b>FC</b> {{ ultimo_vital.fc }} bpm</div>{% endif %}
+            {% if ultimo_vital.peso %}<div class="col-6"><b>Peso</b> {{ ultimo_vital.peso }} kg</div>{% endif %}
+            {% if ultimo_vital.imc %}<div class="col-6"><b>IMC</b> {{ ultimo_vital.imc }} ({{ ultimo_vital.imc_classe }})</div>{% endif %}
+            {% if ultimo_vital.temperatura %}<div class="col-6"><b>Temp.</b> {{ ultimo_vital.temperatura }} °C</div>{% endif %}
+            {% if ultimo_vital.spo2 %}<div class="col-6"><b>SpO₂</b> {{ ultimo_vital.spo2 }}%</div>{% endif %}
+            {% if ultimo_vital.glicemia %}<div class="col-6"><b>Glicemia</b> {{ ultimo_vital.glicemia }}</div>{% endif %}
+          </div></div>{% endif %}
+        <div class="card"><div class="card-header">Próximos agendamentos</div>
+          <ul class="list-group list-group-flush">{% for a in proximos %}<li class="list-group-item small">{{ a.inicio|date:"d/m/Y H:i" }} — {{ a.tipo }} ({{ a.medico }})</li>{% empty %}<li class="list-group-item small text-muted">Nenhum.</li>{% endfor %}</ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Histórico clínico -->
+  <div class="tab-pane fade" id="historico">
+    <div class="card"><div class="card-header d-flex justify-content-between align-items-center">Anamnese / antecedentes
+      {% if pode_editar %}<a href="{% url 'prontuario:historico' p.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i> {% if hist %}Atualizar{% else %}Preencher{% endif %}</a>{% endif %}</div>
+      <div class="card-body">
+      {% if hist %}
+        <div class="row g-3 small">
+          <div class="col-md-6"><b>Alergias</b><div style="white-space: pre-line;">{{ hist.alergias|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Doenças crônicas / comorbidades</b><div style="white-space: pre-line;">{{ hist.doencas_cronicas|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Medicamentos em uso contínuo</b><div style="white-space: pre-line;">{{ hist.medicamentos_uso|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Antecedentes pessoais</b><div style="white-space: pre-line;">{{ hist.antecedentes_pessoais|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Cirurgias prévias</b><div style="white-space: pre-line;">{{ hist.cirurgias|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Internações</b><div style="white-space: pre-line;">{{ hist.internacoes|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Antecedentes familiares</b><div style="white-space: pre-line;">{{ hist.antecedentes_familiares|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Hábitos</b><div>Tabagismo: {{ hist.get_tabagismo_display|default:"-" }} · Etilismo: {{ hist.get_etilismo_display|default:"-" }} · Outras drogas: {{ hist.get_drogas_display|default:"-" }}</div>
+            <div>Atividade física: {{ hist.atividade_fisica|default:"-" }}</div><div>Alimentação: {{ hist.alimentacao|default:"-" }} · Sono: {{ hist.sono|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Gineco-obstétrico</b><div style="white-space: pre-line;">{{ hist.gineco_obstetrico|default:"-" }}</div></div>
+          <div class="col-md-6"><b>Vacinação</b><div style="white-space: pre-line;">{{ hist.vacinacao|default:"-" }}</div></div>
+          <div class="col-12"><b>Observações</b><div style="white-space: pre-line;">{{ hist.observacoes|default:"-" }}</div></div>
+          <div class="col-12 text-muted">Atualizado em {{ hist.atualizado_em|date:"d/m/Y H:i" }}{% if hist.atualizado_por %} por {{ hist.atualizado_por }}{% endif %}</div>
+        </div>
+      {% else %}<div class="vazio"><i class="bi bi-clipboard"></i>Histórico clínico ainda não preenchido.</div>{% endif %}
+    </div></div>
+  </div>
+
+  <!-- Atendimentos -->
+  <div class="tab-pane fade" id="atendimentos">
+    <div class="card"><div class="table-responsive"><table class="table table-hover">
+      <thead><tr><th>Data</th><th>Tipo</th><th>Profissional</th><th>Queixa principal</th><th>CID</th><th>Situação</th><th></th></tr></thead>
+      <tbody>{% for a in atendimentos %}
+        <tr><td>{{ a.data|date:"d/m/Y H:i" }}</td><td>{{ a.get_tipo_display }}</td><td>{{ a.medico }}</td><td>{{ a.queixa_principal|truncatechars:60|default:"-" }}</td>
+          <td>{{ a.cid_principal.codigo|default:"-" }}</td>
+          <td>{% if a.finalizado %}<span class="badge text-bg-success">Finalizado</span>{% else %}<span class="badge text-bg-warning">Em andamento</span>{% endif %}</td>
+          <td class="text-end"><a href="{% url 'prontuario:atendimento' a.pk %}" class="btn btn-sm btn-light"><i class="bi bi-eye"></i></a></td></tr>
+      {% empty %}<tr><td colspan="7"><div class="vazio">Nenhum atendimento registrado.</div></td></tr>{% endfor %}</tbody></table></div></div>
+  </div>
+
+  <!-- Sinais vitais -->
+  <div class="tab-pane fade" id="vitais">
+    {% if tem_vitais %}
+    <div class="row g-3">
+      <div class="col-lg-6"><div class="card"><div class="card-header">Pressão arterial (mmHg)</div><div class="card-body"><canvas id="gPA" height="200"></canvas></div></div></div>
+      <div class="col-lg-6"><div class="card"><div class="card-header">Peso (kg)</div><div class="card-body"><canvas id="gPeso" height="200"></canvas></div></div></div>
+    </div>
+    <div class="card mt-3"><div class="table-responsive"><table class="table table-sm">
+      <thead><tr><th>Data</th><th>PA</th><th>FC</th><th>FR</th><th>Temp.</th><th>SpO₂</th><th>Peso</th><th>Altura</th><th>IMC</th><th>Glicemia</th><th>Dor</th></tr></thead>
+      <tbody>{% for a in atendimentos %}{% if a.tem_sinais_vitais %}<tr><td>{{ a.data|date:"d/m/Y" }}</td><td>{{ a.pa|default:"-" }}</td><td>{{ a.fc|default:"-" }}</td><td>{{ a.fr|default:"-" }}</td><td>{{ a.temperatura|default:"-" }}</td><td>{{ a.spo2|default:"-" }}</td><td>{{ a.peso|default:"-" }}</td><td>{{ a.altura|default:"-" }}</td><td>{{ a.imc|default:"-" }}</td><td>{{ a.glicemia|default:"-" }}</td><td>{{ a.dor|default_if_none:"-" }}</td></tr>{% endif %}{% endfor %}</tbody>
+    </table></div></div>
+    {% else %}<div class="card"><div class="vazio"><i class="bi bi-heart-pulse"></i>Nenhum sinal vital registrado.</div></div>{% endif %}
+  </div>
+
+  <!-- Documentos -->
+  <div class="tab-pane fade" id="documentos">
+    <div class="card"><div class="table-responsive"><table class="table table-hover">
+      <thead><tr><th>Data</th><th>Documento</th><th>Profissional</th><th>Conteúdo</th><th></th></tr></thead>
+      <tbody>{% for d in documentos %}
+        <tr><td>{{ d.data|date:"d/m/Y" }}</td><td>{{ d.titulo_exibicao }}</td><td>{{ d.medico }}</td>
+          <td class="small">{% for i in d.itens.all %}{{ i.nome }}{% if not forloop.last %}; {% endif %}{% empty %}{{ d.conteudo|truncatechars:80 }}{% endfor %}</td>
+          <td class="text-end"><a href="{% url 'documentos:imprimir' d.pk %}" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-printer"></i></a></td></tr>
+      {% empty %}<tr><td colspan="5"><div class="vazio">Nenhum documento.</div></td></tr>{% endfor %}</tbody></table></div></div>
+  </div>
+
+  <!-- Laboratório: comparativo -->
+  <div class="tab-pane fade" id="laboratorio">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">
+      <span class="small text-muted">Valores fora da referência em destaque. <i class="bi bi-arrow-up-right text-danger"></i>/<i class="bi bi-arrow-down-right text-primary"></i> = tendência do último resultado.</span>
+      {% if pode_editar %}<a href="{% url 'prontuario:resultados_lancar' p.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Lançar resultados</a>{% endif %}
+    </div>
+    {% if lab.linhas %}
+    <div class="card mb-3"><div class="table-responsive"><table class="table table-sm table-hover mb-0">
+      <thead><tr><th>Exame</th><th>Referência</th>{% for d in lab.datas %}<th class="num">{{ d|date:"d/m/y" }}</th>{% endfor %}<th></th></tr></thead>
+      <tbody>{% for l in lab.linhas %}
+        <tr><td><a href="#" class="text-decoration-none" data-grafico="{{ l.exame.pk }}">{{ l.exame.nome }}</a> <span class="text-muted small">{{ l.exame.unidade }}</span></td>
+          <td class="small text-muted">{{ l.exame.referencia|default:"-" }}</td>
+          {% for r in l.celulas %}<td class="num">{% if r %}<span class="{% if r.situacao == 'alto' %}text-danger fw-bold{% elif r.situacao == 'baixo' %}text-primary fw-bold{% endif %}" title="{{ r.get_situacao_display|default:r.situacao }}">{{ r.valor_fmt }}{% if r.situacao == 'alto' %} ↑{% elif r.situacao == 'baixo' %} ↓{% endif %}</span>{% else %}<span class="text-muted">·</span>{% endif %}</td>{% endfor %}
+          <td>{% if l.tendencia == 'sobe' %}<i class="bi bi-arrow-up-right text-danger"></i>{% elif l.tendencia == 'desce' %}<i class="bi bi-arrow-down-right text-primary"></i>{% elif l.tendencia == 'igual' %}<i class="bi bi-arrow-right text-muted"></i>{% endif %}</td></tr>
+      {% endfor %}</tbody></table></div></div>
+    <div class="card"><div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">Evolução
+      <select id="labSel" class="form-select form-select-sm" style="max-width: 320px;" aria-label="Exame">{% for l in lab.linhas %}<option value="{{ l.exame.pk }}">{{ l.exame }}</option>{% endfor %}</select></div>
+      <div class="card-body"><div style="height: 260px;"><canvas id="gLab"></canvas></div></div></div>
+    {% else %}<div class="card"><div class="vazio"><i class="bi bi-droplet"></i>Nenhum resultado laboratorial lançado.</div></div>{% endif %}
+  </div>
+
+  <!-- Exames -->
+  <div class="tab-pane fade" id="exames">
+    <div class="card"><div class="table-responsive"><table class="table table-hover">
+      <thead><tr><th>Data</th><th>Tipo</th><th>Título</th><th>Resultado</th><th>Arquivo</th></tr></thead>
+      <tbody>{% for x in anexos %}
+        <tr><td>{{ x.data|date:"d/m/Y" }}</td><td>{{ x.get_tipo_display }}</td><td class="fw-semibold">{{ x.titulo }}</td><td class="small" style="white-space: pre-line;">{{ x.resultado|truncatechars:200|default:"-" }}</td>
+          <td>{% if x.arquivo %}<a href="{% url 'prontuario:anexo_arquivo' x.pk %}" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-{% if x.eh_imagem %}image{% else %}file-earmark{% endif %}"></i> abrir</a>{% else %}-{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="5"><div class="vazio">Nenhum exame ou anexo.</div></td></tr>{% endfor %}</tbody></table></div></div>
+  </div>
+
+  <!-- Agenda -->
+  <div class="tab-pane fade" id="agenda">
+    <div class="card"><div class="table-responsive"><table class="table table-sm">
+      <thead><tr><th>Data</th><th>Atendimento</th><th>Profissional</th><th>Status</th></tr></thead>
+      <tbody>{% for a in agendamentos %}<tr><td>{{ a.inicio|date:"d/m/Y H:i" }}</td><td>{{ a.tipo }}</td><td>{{ a.medico }}</td><td><span class="badge-status" style="background: {{ a.cor }}">{{ a.get_status_display }}</span></td></tr>
+      {% empty %}<tr><td colspan="4"><div class="vazio">Sem agendamentos.</div></td></tr>{% endfor %}</tbody></table></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% if lab.linhas %}
+<script>
+(function () {
+  var S = {{ lab_series|safe }}, graf = null, sel = document.getElementById('labSel');
+  function desenhar(id) {
+    var s = S[id]; if (!s) return;
+    var labels = s.pontos.map(function (p) { return p[0]; }), vals = s.pontos.map(function (p) { return p[1]; });
+    var ds = [{ label: s.nome, data: vals, borderColor: '#139e86', backgroundColor: '#139e86', tension: .25,
+                pointBackgroundColor: vals.map(function (v) { return (s.max !== null && v > s.max) || (s.min !== null && v < s.min) ? '#dc2626' : '#139e86'; }), pointRadius: 5 }];
+    if (s.max !== null) ds.push({ label: 'Ref. máx.', data: labels.map(function () { return s.max; }), borderColor: '#f87171', borderDash: [6, 4], pointRadius: 0, fill: false });
+    if (s.min !== null) ds.push({ label: 'Ref. mín.', data: labels.map(function () { return s.min; }), borderColor: '#60a5fa', borderDash: [6, 4], pointRadius: 0, fill: false });
+    if (graf) graf.destroy();
+    graf = new Chart(document.getElementById('gLab'), { type: 'line', data: { labels: labels, datasets: ds },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+  }
+  sel.addEventListener('change', function () { desenhar(sel.value); });
+  document.querySelectorAll('[data-grafico]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); sel.value = a.dataset.grafico; desenhar(a.dataset.grafico); });
+  });
+  document.querySelector('[data-bs-target="#laboratorio"]').addEventListener('shown.bs.tab', function () { desenhar(sel.value); });
+  if (location.hash === '#laboratorio') setTimeout(function () { desenhar(sel.value); }, 300);
+})();
+</script>
+{% endif %}
+{% if tem_vitais %}
+<script>
+(function () {
+  var g = {{ grafico|safe }};
+  var opts = { responsive: true, maintainAspectRatio: false, spanGaps: true, plugins: { legend: { position: 'bottom' } } };
+  var el = document.getElementById('gPA');
+  el.parentNode.style.height = '220px';
+  new Chart(el, { type: 'line', data: { labels: g.datas, datasets: [
+    { label: 'Sistólica', data: g.pas, borderColor: '#dc2626', backgroundColor: '#dc2626', tension: .3 },
+    { label: 'Diastólica', data: g.pad, borderColor: '#0ea5e9', backgroundColor: '#0ea5e9', tension: .3 }] }, options: opts });
+  var el2 = document.getElementById('gPeso');
+  el2.parentNode.style.height = '220px';
+  new Chart(el2, { type: 'line', data: { labels: g.datas, datasets: [
+    { label: 'Peso (kg)', data: g.peso, borderColor: '#139e86', backgroundColor: '#139e86', tension: .3 }] }, options: opts });
+})();
+</script>
+{% endif %}
+<script>
+if (location.hash) { var b = document.querySelector('[data-bs-target="' + location.hash + '"]'); if (b) bootstrap.Tab.getOrCreateInstance(b).show(); }
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="pt-br"><head>{% include "_head.html" %}<title>Escolha a clínica | MedAccess</title></head>
+<body>
+<main class="login-page">
+  <div class="login-card" style="max-width: 480px;">
+    <div class="topo"><img src="{% static 'icons/icon-192.png' %}" alt="">
+      <h1>Selecione a clínica</h1>
+      <div class="sub">Olá, {{ user.first_name|default:user.username }}. Em qual unidade deseja trabalhar?</div></div>
+    <div class="d-grid gap-2">
+      {% for c in clinicas %}
+        <a href="?id={{ c.pk }}" class="btn btn-instalar text-start py-3 d-flex align-items-center gap-3">
+          <i class="bi bi-building fs-4"></i>
+          <span><b>{{ c.nome }}</b><br><small class="opacity-75">{{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}</small></span>
+          <i class="bi bi-chevron-right ms-auto"></i>
+        </a>
+      {% empty %}
+        <div class="alert alert-warning">Seu usuário não está vinculado a nenhuma clínica ativa. Procure o administrador.</div>
+        {% if user.is_superuser %}<a href="{% url 'contas:clinica_nova' %}" class="btn btn-entrar">Cadastrar primeira clínica</a>{% endif %}
+      {% endfor %}
+    </div>
+    <form method="post" action="{% url 'contas:logout' %}" class="text-center mt-3">{% csrf_token %}
+      <button class="btn btn-link text-white-50 btn-sm">Sair</button></form>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/app.js' %}?v={{ PWA_VERSAO }}"></script>
+</body></html>

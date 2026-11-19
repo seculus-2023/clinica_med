@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Financeiro{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-cash-coin"></i>Contas a pagar e a receber</h1><p>Período de {{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }} (por vencimento).</p></div>
+  {% if pode_editar %}<div class="d-flex gap-2"><a href="{% url 'financeiro:lancamento_novo' %}?tipo=receita" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Receita</a>
+    <a href="{% url 'financeiro:lancamento_novo' %}?tipo=despesa" class="btn btn-outline-danger"><i class="bi bi-dash-lg"></i> Despesa</a></div>{% endif %}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-arrow-down-circle"></i></div><div><div class="v">{{ t.recebido|moeda }}</div><div class="l">Recebido</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-hourglass"></i></div><div><div class="v">{{ t.receber|moeda }}</div><div class="l">A receber</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi"><div class="ic ic-red"><i class="bi bi-arrow-up-circle"></i></div><div><div class="v">{{ t.pago|moeda }}</div><div class="l">Pago</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-receipt"></i></div><div><div class="v">{{ t.pagar|moeda }}</div><div class="l">A pagar</div></div></div></div>
+  <div class="col-12 col-xl"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-wallet2"></i></div><div><div class="v {% if t.saldo < 0 %}text-danger{% endif %}">{{ t.saldo|moeda }}</div><div class="l">Saldo realizado · previsto {{ t.previsto|moeda }}</div></div></div></div>
+</div>
+<form class="filtros mb-3">
+  <div><label class="form-label small mb-0" for="de">De</label><input type="date" id="de" name="de" value="{{ de|date:'Y-m-d' }}" class="form-control"></div>
+  <div><label class="form-label small mb-0" for="ate">Até</label><input type="date" id="ate" name="ate" value="{{ ate|date:'Y-m-d' }}" class="form-control"></div>
+  <div><select name="tipo" class="form-select" aria-label="Tipo"><option value="">Receitas e despesas</option><option value="receita" {% if tipo == 'receita' %}selected{% endif %}>Receitas</option><option value="despesa" {% if tipo == 'despesa' %}selected{% endif %}>Despesas</option></select></div>
+  <div><select name="status" class="form-select" aria-label="Situação"><option value="">Todas as situações</option>
+    <option value="pendente" {% if status == 'pendente' %}selected{% endif %}>Pendentes</option><option value="atrasado" {% if status == 'atrasado' %}selected{% endif %}>Atrasados</option>
+    <option value="pago" {% if status == 'pago' %}selected{% endif %}>Pagos</option><option value="cancelado" {% if status == 'cancelado' %}selected{% endif %}>Cancelados</option></select></div>
+  <div style="flex: 1 1 200px;"><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Descrição, paciente, fornecedor..."></div>
+  <button class="btn btn-light"><i class="bi bi-funnel"></i> Filtrar</button>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-hover">
+  <thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Paciente / fornecedor</th><th>Situação</th><th class="num">Valor</th><th class="text-end">Ações</th></tr></thead>
+  <tbody>{% for l in lancamentos %}
+    <tr><td>{{ l.vencimento|date:"d/m/Y" }}</td>
+      <td><i class="bi {% if l.tipo == 'receita' %}bi-arrow-down-circle text-success{% else %}bi-arrow-up-circle text-danger{% endif %}"></i> {% if pode_editar %}<a href="{% url 'financeiro:lancamento_editar' l.pk %}" class="text-decoration-none">{{ l.descricao }}</a>{% else %}{{ l.descricao }}{% endif %} {% if l.parcela %}<small class="text-muted">({{ l.parcela }})</small>{% endif %}</td>
+      <td>{{ l.categoria|default:"-" }}</td><td>{% if l.paciente %}{{ l.paciente }}{% else %}{{ l.fornecedor|default:"-" }}{% endif %}</td>
+      <td>{% if l.status == 'pago' %}<span class="badge text-bg-success">Pago {{ l.data_pagamento|date:"d/m" }}</span>{% elif l.status == 'cancelado' %}<span class="badge text-bg-secondary">Cancelado</span>{% elif l.atrasado %}<span class="badge text-bg-danger">Atrasado</span>{% else %}<span class="badge text-bg-warning">Pendente</span>{% endif %}</td>
+      <td class="num fw-semibold {% if l.tipo == 'despesa' %}text-danger{% endif %}">{{ l.valor|moeda }}</td>
+      <td class="text-end text-nowrap">{% if pode_editar %}
+        {% if l.status == 'pendente' %}
+        <form method="post" action="{% url 'financeiro:baixar' l.pk %}" class="d-inline-flex gap-1">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <select name="forma" class="form-select form-select-sm" style="width: 120px;" aria-label="Forma de pagamento">{% for v, r in formas %}<option value="{{ v }}" {% if v == l.forma_pagamento %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+          <button class="btn btn-sm btn-success" title="Baixar como pago"><i class="bi bi-check2"></i></button></form>
+        {% elif l.status == 'pago' %}
+        <form method="post" action="{% url 'financeiro:baixar' l.pk %}" class="d-inline" data-confirm="Estornar a baixa?">{% csrf_token %}<input type="hidden" name="estornar" value="1"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="btn btn-sm btn-light" title="Estornar"><i class="bi bi-arrow-counterclockwise"></i></button></form>
+        {% endif %}{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7"><div class="vazio"><i class="bi bi-inbox"></i>Nenhum lançamento no período.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

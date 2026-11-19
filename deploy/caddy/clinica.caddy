@@ -1,0 +1,38 @@
+# Blocos do MedAccess (clinica) para o Caddyfile do servidor
+# (C:\webapps\caddy\Caddyfile, o mesmo do Site e do BolsaTrader).
+# O Django da clinica roda so internamente em 127.0.0.1:18003
+# (deploy\iniciar_clinica.bat). O Caddy cuida do HTTPS.
+#
+# 1) Na Cloudflare, crie o registro DNS "clinica" (A -> 24.152.36.103),
+#    SSL/TLS modo "Full (strict)". Troque o dominio abaixo se usar outro.
+# 2) Cole os blocos no Caddyfile e rode: caddy reload --config Caddyfile
+# 3) No .env do servidor: SITE_URL=https://clinica.arpjr.com.br
+
+clinica.arpjr.com.br {
+	encode gzip
+	handle_path /media/* {
+		root * C:/webapps/clinica/media
+		file_server
+	}
+	reverse_proxy 127.0.0.1:18003 {
+		header_up X-Forwarded-Proto https
+	}
+}
+
+# Acesso direto pelo IP (sem DNS), porta publica 8003.
+# Libere a porta 8003 no firewall do Windows/servidor.
+https://24.152.36.103:8003 {
+	tls {
+		issuer acme {
+			profile shortlived
+		}
+	}
+	encode gzip
+	handle_path /media/* {
+		root * C:/webapps/clinica/media
+		file_server
+	}
+	reverse_proxy 127.0.0.1:18003 {
+		header_up X-Forwarded-Proto https
+	}
+}

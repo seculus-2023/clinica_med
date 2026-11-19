@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Lançar resultados de exames{% endblock %}
+{% block conteudo %}
+<div class="page-head"><div><h1><i class="bi bi-droplet-half"></i>Lançar resultados de exames</h1>
+  <p>Preencha só os exames do laudo. Os valores alimentam o comparativo e o gráfico do prontuário.</p></div>
+  <a href="{% url 'prontuario:paciente' p.pk %}#laboratorio" class="btn btn-light"><i class="bi bi-arrow-left"></i> Prontuário</a></div>
+{% include "prontuario/_cabecalho.html" %}
+{% for e in erros %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+<form method="post" novalidate>{% csrf_token %}
+  <div class="card mb-3"><div class="card-body row g-3">
+    <div class="col-md-3"><label class="form-label" for="data">Data da coleta</label><input type="date" class="form-control" id="data" name="data" value="{% if post.data %}{{ post.data }}{% else %}{{ hoje|date:'Y-m-d' }}{% endif %}" required></div>
+    <div class="col-md-6"><label class="form-label" for="anexo">Laudo anexado (opcional)</label>
+      <select name="anexo" id="anexo" class="form-select"><option value="">-</option>{% for a in anexos %}<option value="{{ a.pk }}">{{ a.data|date:"d/m/Y" }} — {{ a.titulo }}</option>{% endfor %}</select>
+      <div class="form-text">Anexe o PDF do laudo em "Exame / anexo" para vinculá-lo aqui.</div></div>
+  </div></div>
+  <div class="row g-3">
+  {% for grupo, exames in grupos.items %}
+    <div class="col-md-6 col-xl-4"><div class="card h-100"><div class="card-header small">{{ grupo }}</div><div class="card-body">
+      {% for e in exames %}
+      <div class="row g-2 align-items-center mb-2">
+        <label class="col-7 col-form-label col-form-label-sm" for="ex_{{ e.pk }}">{{ e.nome }}<div class="text-muted" style="font-size: .72rem;">ref. {{ e.referencia|default:"-" }} {{ e.unidade }}</div></label>
+        <div class="col-5"><div class="input-group input-group-sm"><input type="text" inputmode="decimal" class="form-control" id="ex_{{ e.pk }}" name="ex_{{ e.pk }}" value="{{ e.valor_post }}"><span class="input-group-text">{{ e.unidade|default:"-" }}</span></div></div>
+      </div>
+      {% endfor %}
+    </div></div></div>
+  {% endfor %}
+  </div>
+  <div class="text-end my-3"><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar resultados</button></div>
+</form>
+{% endblock %}

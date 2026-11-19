@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}{{ p.nome }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-person-heart"></i>{{ p.nome }}</h1>
+    <p>{% if p.idade is not None %}{{ p.idade }} anos · {% endif %}{{ p.celular|default:"sem celular" }}{% if p.email %} · {{ p.email }}{% endif %}{% if p.convenio %} · {{ p.convenio }}{% endif %}</p></div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if ver_prontuario %}<a href="{% url 'prontuario:consulta_paciente' p.pk %}" class="btn btn-outline-primary"><i class="bi bi-journal-medical"></i> Prontuário</a>{% endif %}
+    {% if perm|edita:'agenda' %}<a href="{% url 'agenda:novo' %}?paciente={{ p.pk }}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Agendar</a>{% endif %}
+    {% if perm|edita:'sessoes' %}<a href="{% url 'agenda:pacote_novo' %}?paciente={{ p.pk }}" class="btn btn-outline-primary"><i class="bi bi-stack"></i> Vender pacote</a>{% endif %}
+    {% if perm|edita:'cadastros' %}<a href="{% url 'cadastros:paciente_editar' p.pk %}" class="btn btn-light"><i class="bi bi-pencil"></i> Editar</a>{% endif %}
+    {% if p.celular %}<a href="https://wa.me/{{ p.celular|whatsapp_numero }}" target="_blank" rel="noopener" class="btn btn-light"><i class="bi bi-whatsapp text-success"></i></a>{% endif %}
+  </div>
+</div>
+{% if p.alergias %}<div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle"></i> <b>Alergias:</b> {{ p.alergias }}</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-header">Agendamentos</div><div class="table-responsive"><table class="table table-sm table-hover">
+      <thead><tr><th>Data</th><th>Atendimento</th><th>Profissional</th><th>Status</th><th class="num">Valor</th></tr></thead>
+      <tbody>{% for a in agendamentos %}<tr><td><a href="{% url 'agenda:detalhe' a.pk %}">{{ a.inicio|date:"d/m/Y H:i" }}</a></td><td>{{ a.tipo }}</td><td>{{ a.medico }}</td><td><span class="badge-status" style="background: {{ a.cor }}">{{ a.get_status_display }}</span></td><td class="num">{{ a.valor|moeda }}</td></tr>
+      {% empty %}<tr><td colspan="5" class="text-muted small p-3">Nenhum agendamento.</td></tr>{% endfor %}</tbody></table></div></div>
+    {% if lancamentos is not None %}<div class="card mb-3"><div class="card-header">Financeiro</div><div class="table-responsive"><table class="table table-sm">
+      <thead><tr><th>Vencimento</th><th>Descrição</th><th>Situação</th><th class="num">Valor</th></tr></thead>
+      <tbody>{% for l in lancamentos %}<tr><td>{{ l.vencimento|date:"d/m/Y" }}</td><td>{{ l.descricao }}</td><td>{{ l.situacao }}</td><td class="num">{{ l.valor|moeda }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="text-muted small p-3">Nenhum lançamento.</td></tr>{% endfor %}</tbody></table></div></div>{% endif %}
+  </div>
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header">Dados cadastrais</div><div class="card-body small">
+      <div><b>CPF:</b> {{ p.cpf|default:"-" }} · <b>RG:</b> {{ p.rg|default:"-" }}</div>
+      <div><b>Nascimento:</b> {{ p.data_nascimento|date:"d/m/Y"|default:"-" }}</div>
+      <div><b>Endereço:</b> {{ p.endereco }} {{ p.numero }} {{ p.bairro }} {{ p.cidade }}{% if p.uf %}/{{ p.uf }}{% endif %}</div>
+      <div><b>Convênio:</b> {{ p.convenio|default:"Particular" }} {{ p.carteirinha }}</div>
+      <div><b>Responsável:</b> {{ p.responsavel|default:"-" }}</div>
+      <div><b>Notificações:</b> WhatsApp {{ p.aceita_whatsapp|yesno:"sim,não" }} · e-mail {{ p.aceita_email|yesno:"sim,não" }} · campanhas {{ p.aceita_campanhas|yesno:"sim,não" }}</div>
+      <div><b>Origem:</b> {{ p.get_origem_display|default:"-" }}</div>
+      <div><b>Consentimento LGPD:</b> {% if p.consentimento_lgpd_em %}<span class="text-success">aceito em {{ p.consentimento_lgpd_em|date:"d/m/Y H:i" }}</span>{% else %}<span class="text-danger">pendente</span> (envie o link de check-in){% endif %}</div>
+      {% if p.observacoes %}<div class="mt-1"><b>Obs.:</b> {{ p.observacoes|linebreaksbr }}</div>{% endif %}
+    </div></div>
+    <div class="card mb-3"><div class="card-header">Pacotes de sessões</div><ul class="list-group list-group-flush">
+      {% for pc in pacotes %}<li class="list-group-item small"><a href="{% url 'agenda:pacote_detalhe' pc.pk %}">{{ pc.tipo }}</a> — {{ pc.usadas }}/{{ pc.quantidade }} usadas · <b>{{ pc.restantes }} restantes</b> <span class="badge text-bg-light border">{{ pc.get_status_display }}</span></li>
+      {% empty %}<li class="list-group-item small text-muted">Nenhum pacote.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header">Call center</div><ul class="list-group list-group-flush">
+      {% for c in contatos %}<li class="list-group-item small">{{ c.data_prevista|date:"d/m/Y" }} — {{ c.get_motivo_display }} · {{ c.get_status_display }}{% if c.satisfacao %} · nota {{ c.satisfacao }}{% endif %}</li>
+      {% empty %}<li class="list-group-item small text-muted">Nenhum contato.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}
