@@ -1,0 +1,78 @@
+{% extends "areamedica/base.html" %}
+{% load clinica_tags %}
+{% block titulo %}{{ p.nome }}{% endblock %}
+{% block corpo %}
+<header class="am-topo">
+  <div class="am-topo-linha">
+    <a href="{% url 'areamedica:agenda' %}?data={{ a.inicio|date:'Y-m-d' }}" class="am-icone" aria-label="Voltar para a agenda"><i class="bi bi-arrow-left"></i></a>
+    <div class="am-quem">
+      <div class="am-nome">{{ p.nome }}</div>
+      <div class="am-clinica">{{ a.inicio|date:"d/m/Y" }} às {{ a.inicio|time:"H:i" }} · {{ a.tipo }}</div>
+    </div>
+    {% include "areamedica/_menu.html" %}
+  </div>
+</header>
+
+<main class="am-conteudo">
+  {% for m in messages %}<div class="alert alert-{{ m.tags }} py-2 small">{{ m }}</div>{% endfor %}
+
+  <section class="am-bloco am-card" style="--cor: {{ a.cor }}">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="am-status">{{ a.get_status_display }}</span>
+      {% if a.teleconsulta %}<span class="am-tag tele"><i class="bi bi-camera-video"></i> Teleconsulta</span>{% endif %}
+      {% if a.pacote_id %}<span class="am-tag">Sessão {{ a.numero_sessao }}/{{ a.pacote.quantidade }}</span>{% endif %}
+    </div>
+    <dl class="am-dados">
+      <dt>Horário</dt><dd>{{ a.inicio|time:"H:i" }} – {{ a.fim|time:"H:i" }}</dd>
+      <dt>Atendimento</dt><dd>{% if a.convenio %}{{ a.operadora|default:"Convênio" }}{% if a.plano %} · {{ a.plano }}{% endif %}{% if a.autorizacao_status != 'nao_requer' %} · autorização {{ a.get_autorizacao_status_display|lower }}{% endif %}{% else %}Particular{% endif %}</dd>
+      {% if a.recurso %}<dt>Sala</dt><dd>{{ a.recurso }}</dd>{% endif %}
+      {% if a.confirmado_em %}<dt>Confirmado</dt><dd>{{ a.confirmado_em|date:"d/m H:i" }}{% if a.confirmado_por == 'paciente' %} pelo paciente{% endif %}</dd>{% endif %}
+      {% if a.chegada_em %}<dt>Chegada</dt><dd>{{ a.chegada_em|time:"H:i" }}</dd>{% endif %}
+      {% if a.observacoes %}<dt>Observações</dt><dd>{{ a.observacoes|linebreaksbr }}</dd>{% endif %}
+    </dl>
+    {% if pode_status and a.status != 'cancelado' and a.status != 'concluido' and a.status != 'faltou' %}
+    <div class="am-acoes">{% include "areamedica/_acoes.html" %}</div>
+    {% endif %}
+  </section>
+
+  {% if p.alergias %}
+  <div class="am-alerta"><i class="bi bi-exclamation-triangle-fill"></i><div><b>Alergias</b>{{ p.alergias|linebreaksbr }}</div></div>
+  {% endif %}
+
+  <section class="am-bloco">
+    <h2>Paciente</h2>
+    <dl class="am-dados">
+      {% if p.data_nascimento %}<dt>Idade</dt><dd>{{ p.idade }} anos ({{ p.data_nascimento|date:"d/m/Y" }})</dd>{% endif %}
+      {% if p.sexo %}<dt>Sexo</dt><dd>{{ p.get_sexo_display }}</dd>{% endif %}
+      {% if p.carteirinha %}<dt>Carteirinha</dt><dd>{{ p.carteirinha }}{% if p.validade_carteirinha %} (val. {{ p.validade_carteirinha|date:"d/m/Y" }}){% endif %}</dd>{% endif %}
+      {% if p.responsavel %}<dt>Responsável</dt><dd>{{ p.responsavel }}</dd>{% endif %}
+      {% if p.celular %}<dt>Celular</dt><dd>{{ p.celular }}</dd>{% endif %}
+      {% if p.observacoes %}<dt>Observações</dt><dd>{{ p.observacoes|linebreaksbr }}</dd>{% endif %}
+    </dl>
+    <div class="am-acoes">
+      {% if pront_editar %}<a class="btn btn-sm btn-primary" href="{% url 'prontuario:paciente' p.pk %}"><i class="bi bi-journal-medical"></i> Prontuário</a>
+      {% elif pront_ver %}<a class="btn btn-sm btn-outline-primary" href="{% url 'prontuario:consulta_paciente' p.pk %}"><i class="bi bi-journal-text"></i> Consultar prontuário</a>{% endif %}
+      {% if p.celular %}<a class="btn btn-sm btn-outline-success" target="_blank" rel="noopener" href="https://wa.me/{{ p.celular|whatsapp_numero }}"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+      <a class="btn btn-sm btn-outline-secondary" href="tel:{{ p.celular|so_digitos }}"><i class="bi bi-telephone"></i> Ligar</a>{% endif %}
+    </div>
+  </section>
+
+  {% if futuros %}
+  <section class="am-bloco">
+    <h2>Próximos agendamentos</h2>
+    <ul class="am-hist">{% for h in futuros %}
+      <li><span>{{ h.inicio|date:"d/m/Y H:i" }}</span><span>{{ h.tipo }}</span><span class="am-status" style="--cor: {{ h.cor }}">{{ h.get_status_display }}</span></li>
+    {% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  <section class="am-bloco">
+    <h2>Histórico com você</h2>
+    {% if anteriores %}
+    <ul class="am-hist">{% for h in anteriores %}
+      <li><span>{{ h.inicio|date:"d/m/Y" }}</span><span>{{ h.tipo }}</span><span class="am-status" style="--cor: {{ h.cor }}">{{ h.get_status_display }}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="text-muted small mb-0">Primeira consulta com este profissional.</p>{% endif %}
+  </section>
+</main>
+{% endblock %}

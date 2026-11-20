@@ -1,0 +1,61 @@
+{% extends "areamedica/base.html" %}
+{% block corpo %}
+<header class="am-topo">
+  <div class="am-topo-linha">
+    <div class="am-quem">
+      <div class="am-nome">{{ medico.nome }}</div>
+      <div class="am-clinica">{{ request.clinica.nome }}{% if not proprio %} · visualização da recepção{% endif %}</div>
+    </div>
+    {% include "areamedica/_menu.html" with opcao_cancelados=True %}
+  </div>
+  {% if medicos %}
+  <form method="get" class="am-sel-medico">
+    <input type="hidden" name="data" value="{{ data|date:'Y-m-d' }}">
+    <select name="medico" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Profissional">
+      {% for m in medicos %}<option value="{{ m.pk }}" {% if m.pk == medico.pk %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
+  <div class="am-dia">
+    <a class="am-icone" href="?data={{ anterior|date:'Y-m-d' }}" aria-label="Dia anterior"><i class="bi bi-chevron-left"></i></a>
+    <label class="am-data">
+      <span>{% if data == hoje %}Hoje, {% endif %}{{ data|date:"l, d \d\e F" }}</span>
+      <input type="date" value="{{ data|date:'Y-m-d' }}" onchange="location.href='?data='+this.value" aria-label="Escolher data">
+    </label>
+    <a class="am-icone" href="?data={{ seguinte|date:'Y-m-d' }}" aria-label="Próximo dia"><i class="bi bi-chevron-right"></i></a>
+  </div>
+  <nav class="am-semana" aria-label="Dias da semana">
+    {% for d in semana %}
+    <a href="?data={{ d.data|date:'Y-m-d' }}" class="{% if d.data == data %}sel{% endif %}{% if d.data == hoje %} hoje{% endif %}">
+      <span class="nome">{{ d.nome }}</span><span class="num">{{ d.data|date:"d" }}</span>
+      <span class="qtd">{% if d.n %}{{ d.n }}{% else %}&nbsp;{% endif %}</span>
+    </a>
+    {% endfor %}
+  </nav>
+</header>
+
+<main class="am-conteudo">
+  {% for m in messages %}<div class="alert alert-{{ m.tags }} py-2 small">{{ m }}</div>{% endfor %}
+  {% if data != hoje %}<a href="?" class="am-voltar-hoje"><i class="bi bi-calendar-event"></i> Voltar para hoje</a>{% endif %}
+  <div id="am-lista" data-url="?data={{ data|date:'Y-m-d' }}{% if mostrar_cancelados %}&amp;cancelados=1{% endif %}&amp;parcial=1">
+    {% include "areamedica/_lista.html" %}
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  // Atualiza a lista a cada 60 s (chegadas marcadas pela recepção) enquanto o app estiver visível.
+  var caixa = document.getElementById('am-lista');
+  function atualizar() {
+    if (document.hidden || !navigator.onLine) return;
+    fetch(caixa.dataset.url, { credentials: 'same-origin' })
+      .then(function (r) { if (r.redirected || !r.ok) throw r; return r.text(); })
+      .then(function (html) { caixa.innerHTML = html; })
+      .catch(function () {});
+  }
+  setInterval(atualizar, 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) atualizar(); });
+})();
+</script>
+{% endblock %}

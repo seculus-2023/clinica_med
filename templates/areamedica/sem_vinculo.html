@@ -1,0 +1,18 @@
+{% extends "areamedica/base.html" %}
+{% block titulo %}Sem acesso{% endblock %}
+{% block corpo %}
+<header class="am-topo">
+  <div class="am-topo-linha">
+    <div class="am-quem"><div class="am-nome">Minha agenda</div><div class="am-clinica">{{ request.clinica.nome }}</div></div>
+    {% include "areamedica/_menu.html" with varias_clinicas=True %}
+  </div>
+</header>
+<main class="am-conteudo">
+  <div class="am-vazio">
+    <i class="bi bi-person-badge"></i>
+    {% if sem_medicos %}<b>Nenhum médico ativo nesta clínica</b><span>Cadastre os profissionais em Cadastros › Médicos.</span>
+    {% else %}<b>Seu usuário não está vinculado a um médico</b>
+    <span>No sistema, abra <b>Cadastros › Médicos</b>, edite o seu cadastro e escolha o seu usuário em <b>Usuário do sistema</b>.</span>{% endif %}
+  </div>
+</main>
+{% endblock %}

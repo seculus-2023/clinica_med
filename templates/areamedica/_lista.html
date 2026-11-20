@@ -1,0 +1,47 @@
+<div class="am-resumo">
+  <div><b>{{ total }}</b><span>pacientes</span></div>
+  <div class="aguard"><b>{{ aguardando }}</b><span>aguardando</span></div>
+  <div class="ok"><b>{{ atendidos }}</b><span>atendidos</span></div>
+  <div class="falta"><b>{{ faltas }}</b><span>faltas</span></div>
+</div>
+
+{% if proximo %}
+<a href="{% url 'areamedica:paciente' proximo.pk %}" class="am-proximo">
+  <i class="bi bi-alarm"></i>
+  <div><small>Próximo paciente · {{ proximo.inicio|time:"H:i" }}</small><b>{{ proximo.paciente.nome }}</b></div>
+  <i class="bi bi-chevron-right ms-auto"></i>
+</a>
+{% endif %}
+
+{% for a in agendamentos %}
+<article class="am-card" style="--cor: {{ a.cor }}">
+  <a href="{% url 'areamedica:paciente' a.pk %}" class="am-card-link">
+    <div class="am-hora">{{ a.inicio|time:"H:i" }}<small>{{ a.fim|time:"H:i" }}</small></div>
+    <div class="am-info">
+      <div class="am-paciente">{{ a.paciente.nome }}</div>
+      <div class="am-meta">
+        {% if a.paciente.idade is not None %}{{ a.paciente.idade }} anos · {% endif %}{{ a.tipo }}
+        · {% if a.convenio %}{{ a.operadora|default:"Convênio" }}{% else %}Particular{% endif %}
+      </div>
+      <div class="am-tags">
+        <span class="am-status">{{ a.get_status_display }}</span>
+        {% if a.teleconsulta %}<span class="am-tag tele"><i class="bi bi-camera-video"></i> Teleconsulta</span>{% endif %}
+        {% if a.pacote_id %}<span class="am-tag">Sessão {{ a.numero_sessao }}/{{ a.pacote.quantidade }}</span>{% endif %}
+        {% if a.paciente.alergias %}<span class="am-tag alerta"><i class="bi bi-exclamation-triangle"></i> Alergia</span>{% endif %}
+        {% if a.chegada_em and a.status == 'aguardando' %}<span class="am-tag">chegou {{ a.chegada_em|time:"H:i" }}</span>{% endif %}
+        {% if a.recurso %}<span class="am-tag"><i class="bi bi-door-open"></i> {{ a.recurso }}</span>{% endif %}
+      </div>
+    </div>
+    <i class="bi bi-chevron-right am-seta"></i>
+  </a>
+  {% if pode_status and a.status != 'cancelado' and a.status != 'concluido' and a.status != 'faltou' %}
+  <div class="am-acoes">
+    {% include "areamedica/_acoes.html" %}
+  </div>
+  {% endif %}
+</article>
+{% empty %}
+<div class="am-vazio"><i class="bi bi-calendar2-check"></i><b>Nenhum paciente {% if data == hoje %}hoje{% else %}neste dia{% endif %}</b>
+  <span>Use as setas ou a semana acima para ver outros dias.</span></div>
+{% endfor %}
+<p class="am-atualizado">Atualizado às {{ atualizado|time:"H:i" }}{% if cancelados and not mostrar_cancelados %} · {{ cancelados }} cancelado{{ cancelados|pluralize }} oculto{{ cancelados|pluralize }}{% endif %}</p>

@@ -1,0 +1,12 @@
+{% if a.status == 'agendado' or a.status == 'confirmado' %}
+  {% include "areamedica/_btn.html" with s="aguardando" rot="Chegou" ic="bi-person-check" cls="btn-outline-success" %}
+  {% include "areamedica/_btn.html" with s="faltou" rot="Faltou" ic="bi-person-x" cls="btn-outline-danger" %}
+{% endif %}
+{% if a.status == 'aguardando' %}
+  {% include "areamedica/_btn.html" with s="em_atendimento" rot="Atender" ic="bi-play-fill" cls="btn-primary" %}
+{% endif %}
+{% if a.status == 'em_atendimento' %}
+  {% if pront_editar %}<a href="{% url 'prontuario:iniciar' a.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-journal-medical"></i> Prontuário</a>{% endif %}
+  {% include "areamedica/_btn.html" with s="concluido" rot="Concluir" ic="bi-check-circle" cls="btn-success" %}
+{% endif %}
+{% if a.teleconsulta and a.status != 'agendado' and a.status != 'concluido' %}<a href="{{ a.sala_video_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary"><i class="bi bi-camera-video"></i> Sala de vídeo</a>{% endif %}

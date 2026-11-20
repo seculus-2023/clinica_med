@@ -1,0 +1,24 @@
+{% extends "areamedica/base.html" %}
+{% block titulo %}Escolher clínica{% endblock %}
+{% block corpo %}
+<header class="am-topo">
+  <div class="am-topo-linha">
+    <div class="am-quem"><div class="am-nome">Escolha a clínica</div><div class="am-clinica">{{ request.user.get_full_name|default:request.user.username }}</div></div>
+    {% include "areamedica/_menu.html" %}
+  </div>
+</header>
+<main class="am-conteudo">
+  {% for c in clinicas %}
+  <form method="post">{% csrf_token %}<input type="hidden" name="id" value="{{ c.pk }}">
+    <button class="am-card am-card-link w-100 text-start border-0">
+      <i class="bi bi-building fs-4 text-primary"></i>
+      <div class="am-info"><div class="am-paciente">{{ c.nome }}</div>
+        <div class="am-meta">{% if c.pk in medico_em %}Você atende nesta clínica{% else %}Sem cadastro de médico vinculado{% endif %}</div></div>
+      <i class="bi bi-chevron-right am-seta"></i>
+    </button>
+  </form>
+  {% empty %}
+  <div class="am-vazio"><i class="bi bi-building-x"></i><b>Nenhuma clínica liberada</b><span>Peça ao administrador para vincular seu usuário a uma clínica.</span></div>
+  {% endfor %}
+</main>
+{% endblock %}

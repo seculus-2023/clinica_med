@@ -1,0 +1,27 @@
+{% extends "areamedica/base.html" %}
+{% load static %}
+{% block titulo %}Entrar{% endblock %}
+{% block corpo %}
+<main class="am-login">
+  <div class="am-login-card">
+    <img src="{% static 'icons/icon-192.png' %}" alt="" width="64" height="64">
+    <h1>Minha agenda</h1>
+    <p>Área do médico · veja seus pacientes do dia</p>
+
+    {% if form.errors %}<div class="alert alert-danger py-2 small"><i class="bi bi-exclamation-circle me-1"></i>Usuário ou senha inválidos.</div>{% endif %}
+    {% for m in messages %}<div class="alert alert-{{ m.tags }} py-2 small">{{ m }}</div>{% endfor %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <label class="am-campo"><i class="bi bi-person"></i><span class="visually-hidden">Usuário</span>{{ form.username }}</label>
+      <label class="am-campo"><i class="bi bi-lock"></i><span class="visually-hidden">Senha</span>{{ form.password }}</label>
+      <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Entrar <i class="bi bi-arrow-right ms-1"></i></button>
+    </form>
+    <button type="button" class="btn btn-outline-light w-100 mt-2 d-none" data-instalar hidden>
+      <i class="bi bi-download me-1"></i> Instalar no celular
+    </button>
+    <a class="am-login-link" href="{% url 'contas:login' %}">Acessar o sistema completo</a>
+  </div>
+</main>
+{% endblock %}

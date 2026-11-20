@@ -23,6 +23,7 @@ urlpatterns = [
     path('documentos/', include('documentos.urls')),
     path('callcenter/', include('callcenter.urls')),
     path('notificacoes/', include('notificacoes.urls')),
+    path('medico/', include('areamedica.urls')),
 ]
 
 if settings.DEBUG:
