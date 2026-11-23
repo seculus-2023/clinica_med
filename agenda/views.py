@@ -260,6 +260,26 @@ def pacotes_paciente(request):
                           'tipo': p.tipo_id} for p in qs], safe=False)
 
 
+@acesso('agenda')
+def preco_tabela(request):
+    """Valor de tabela para o tipo/convênio escolhidos no formulário de agendamento."""
+    from cadastros.models import TipoAtendimento
+    from convenios.models import Operadora, Plano
+
+    def _id(nome):
+        v = request.GET.get(nome, '')
+        return int(v) if v.isascii() and v.isdigit() and len(v) < 10 else 0
+
+    tipo = TipoAtendimento.objects.filter(clinica=request.clinica, pk=_id('tipo')).first()
+    if not tipo:
+        return JsonResponse({'valor': None, 'origem': ''})
+    operadora = Operadora.objects.filter(clinica=request.clinica, pk=_id('operadora')).first()
+    plano = Plano.objects.filter(clinica=request.clinica, operadora=operadora, pk=_id('plano')).first() if operadora else None
+    pacote = PacoteSessao.objects.filter(clinica=request.clinica, pk=_id('pacote')).exists()
+    valor, origem = Agendamento.preco_tabela(tipo, operadora, plano, request.GET.get('convenio') == '1', pacote)
+    return JsonResponse({'valor': f'{valor:.2f}', 'origem': origem})
+
+
 # ------------- Pacotes de sessões -------------
 class PacoteCrud(Crud):
     model, form_class = PacoteSessao, PacoteForm

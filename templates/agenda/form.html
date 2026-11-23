@@ -15,6 +15,13 @@
       {% include "_campo.html" with f=form.recurso col="col-md-4" %}
       {% include "_campo.html" with f=form.status col="col-md-4" %}
       {% include "_campo.html" with f=form.valor col="col-md-4" %}
+      <div class="col-md-8 d-flex align-items-center">
+        <input type="hidden" name="valor_digitado" id="valorDigitado" value="{{ request.POST.valor_digitado }}">
+        <div id="alertaValor" class="alert alert-warning py-2 mb-0 w-100 d-none" role="alert">
+          <i class="bi bi-exclamation-triangle"></i> <span id="alertaValorTexto"></span>
+          <button type="button" id="usarValorTabela" class="btn btn-sm btn-warning ms-2">Usar valor da tabela</button>
+        </div>
+      </div>
       <div class="col-12"><div class="border rounded p-2 bg-light"><div class="small fw-semibold mb-2"><i class="bi bi-building-check"></i> Convênio <span class="text-muted fw-normal" id="infoCarteira"></span></div><div class="row g-2">
       {% include "_campo.html" with f=form.operadora col="col-md-3" %}
       {% include "_campo.html" with f=form.plano col="col-md-3" %}
@@ -36,7 +43,7 @@
   var pac = document.getElementById('id_paciente'), pacote = document.getElementById('id_pacote'), tipo = document.getElementById('id_tipo');
   var atual = pacote.value;
   function carregar() {
-    fetch('{% url "agenda:api_pacotes" %}?paciente=' + (pac.value || 0), { credentials: 'same-origin' })
+    return fetch('{% url "agenda:api_pacotes" %}?paciente=' + (pac.value || 0), { credentials: 'same-origin' })
       .then(function (r) { return r.json(); }).then(function (d) {
         pacote.innerHTML = '<option value="">Sem pacote (atendimento avulso)</option>';
         d.forEach(function (p) {
@@ -46,8 +53,42 @@
         });
       });
   }
-  pac.addEventListener('change', function () { atual = ''; carregar(); carregarConvenio(); });
+  pac.addEventListener('change', function () { atual = ''; carregar().then(function () { atualizarPreco(true); }); carregarConvenio(); });
   var op = document.getElementById('id_operadora'), pl = document.getElementById('id_plano'), info = document.getElementById('infoCarteira');
+  var campoValor = document.getElementById('id_valor'), conv = document.getElementById('id_convenio'), digitado = document.getElementById('valorDigitado');
+  var alerta = document.getElementById('alertaValor'), alertaTexto = document.getElementById('alertaValorTexto');
+  var tabela = null, origem = '', consulta = 0;
+  function paraCentavos(texto) {
+    var s = texto.trim().replace(/^R\$\s*/, '');
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    else if ((s.match(/\./g) || []).length > 1 || /\.\d{3}$/.test(s)) s = s.replace(/\./g, '');
+    if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+    return Math.round(parseFloat(s) * 100);
+  }
+  function brl(centavos) { return (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function compararValor() {
+    var c = campoValor.value.trim() ? paraCentavos(campoValor.value) : null;
+    var diferente = tabela !== null && c !== null && c !== tabela;
+    alerta.classList.toggle('d-none', !diferente);
+    if (diferente) alertaTexto.textContent = 'Valor diferente da tabela: ' + brl(tabela) + ' (' + origem + '). Informado: ' + brl(c) + '.';
+  }
+  function preencherTabela() { campoValor.value = (tabela / 100).toFixed(2).replace('.', ','); digitado.value = ''; compararValor(); }
+  function atualizarPreco(sugerir) {
+    var id = ++consulta;
+    if (!tipo.value) { tabela = null; compararValor(); return; }
+    var q = new URLSearchParams({ tipo: tipo.value, operadora: op.value, plano: pl.value, pacote: pacote.value, convenio: conv.checked ? '1' : '0' });
+    fetch('{% url "agenda:api_preco" %}?' + q, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (id !== consulta) return;
+      tabela = d.valor === null ? null : paraCentavos(d.valor); origem = d.origem;
+      if (tabela !== null && !digitado.value && (sugerir || !campoValor.value.trim())) preencherTabela();
+      else compararValor();
+    });
+  }
+  campoValor.addEventListener('input', function () { digitado.value = campoValor.value.trim() ? '1' : ''; compararValor(); });
+  document.getElementById('usarValorTabela').addEventListener('click', preencherTabela);
+  tipo.addEventListener('change', function () { atualizarPreco(true); });
+  pl.addEventListener('change', function () { atualizarPreco(true); });
+  conv.addEventListener('change', function () { atualizarPreco(true); });
   function preencherPlanos(lista, sel) {
     pl.innerHTML = '<option value="">---------</option>';
     lista.forEach(function (p) { var o = document.createElement('option'); o.value = p.id; o.textContent = p.nome; if (String(p.id) === String(sel)) o.selected = true; pl.appendChild(o); });
@@ -55,21 +96,23 @@
   function carregarConvenio() {
     if (!pac.value) return;
     fetch('/convenios/api/paciente/' + pac.value + '/', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (d.operadora && !op.value) { op.value = d.operadora; preencherPlanos(d.planos, d.plano); }
+      if (d.operadora && !op.value) { op.value = d.operadora; preencherPlanos(d.planos, d.plano); atualizarPreco(true); }
       info.textContent = d.carteirinha ? '— carteira ' + d.carteirinha + (d.validade ? ' (validade ' + d.validade + ')' : '') : '';
       info.className = d.vencida ? 'text-danger fw-semibold' : 'text-muted fw-normal';
       if (d.vencida) info.textContent += ' — VENCIDA';
     });
   }
   op.addEventListener('change', function () {
-    fetch('/convenios/api/planos/?operadora=' + (op.value || 0), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) { preencherPlanos(d, ''); });
+    fetch('/convenios/api/planos/?operadora=' + (op.value || 0), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) { preencherPlanos(d, ''); atualizarPreco(true); });
   });
   if (pac.value) carregarConvenio();
   pacote.addEventListener('change', function () {
     var o = pacote.selectedOptions[0];
     if (o && o.dataset.tipo) tipo.value = o.dataset.tipo;
+    atualizarPreco(true);
   });
   carregar();
+  atualizarPreco(false);
 })();
 </script>
 {% endblock %}

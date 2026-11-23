@@ -24,6 +24,7 @@ urlpatterns = [
     path('tele/<uuid:token>/', publico.teleconsulta, name='teleconsulta'),
     path('espera/<int:pk>/agendar/', views.espera_agendar, name='espera_agendar'),
     path('api/pacotes/', views.pacotes_paciente, name='api_pacotes'),
+    path('api/preco/', views.preco_tabela, name='api_preco'),
     path('pacotes/novo/', views.pacote_novo, name='pacote_novo'),
     path('pacotes/<int:pk>/', views.pacote_detalhe, name='pacote_detalhe'),
 ]

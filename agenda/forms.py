@@ -24,7 +24,7 @@ class AgendamentoForm(ClinicaModelForm):
         self.fields['pacote'].queryset = PacoteSessao.objects.filter(
             clinica=self.clinica, status='ativo').select_related('paciente', 'tipo')
         self.fields['pacote'].required = False
-        self.fields['valor'].help_text = 'Vazio = valor da tabela de preços (zero se for sessão de pacote).'
+        self.fields['valor'].help_text = 'Sugerido pela tabela de preços. Vazio = valor da tabela (zero se for sessão de pacote).'
         self.fields['autorizacao_status'].required = False
         self.fields['autorizacao_status'].initial = 'nao_requer'
         if medico_restrito:
@@ -102,7 +102,8 @@ class AgendamentoForm(ClinicaModelForm):
         obj.recurso = self.cleaned_data.get('recurso')
         obj.autorizacao_status = self.cleaned_data.get('autorizacao_status') or 'nao_requer'
         obj.fim = self.cleaned_data['fim']
-        if 'valor' in self.changed_data or not obj.pk:
+        # valor_digitado: o usuário informou o valor, mesmo que igual ao anterior (não recalcular)
+        if 'valor' in self.changed_data or not obj.pk or self.data.get('valor_digitado'):
             obj.valor = self.cleaned_data.get('valor')
         elif {'tipo', 'convenio', 'pacote', 'operadora', 'plano'} & set(self.changed_data):
             obj.valor = None  # recalcula pela tabela de preços

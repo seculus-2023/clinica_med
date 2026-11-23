@@ -196,6 +196,19 @@ class Agendamento(ClinicaModel):
     def __str__(self):
         return f'{timezone.localtime(self.inicio):%d/%m/%Y %H:%M} - {self.paciente}'
 
+    @staticmethod
+    def preco_tabela(tipo, operadora=None, plano=None, convenio=False, pacote=False):
+        """Valor de tabela do atendimento e a sua origem: (valor, descrição)."""
+        from convenios.models import PrecoConvenio
+        if pacote:
+            return 0, 'sessão de pacote'
+        preco = PrecoConvenio.buscar(operadora, plano, tipo) if operadora else None
+        if preco:
+            return preco.valor, f'tabela do convênio {operadora.nome}'
+        if (convenio or operadora) and tipo.valor_convenio is not None:
+            return tipo.valor_convenio, 'valor convênio do tipo de atendimento'
+        return tipo.valor, 'valor particular'
+
     def save(self, *args, **kwargs):
         if self.inicio and not self.fim:
             self.fim = self.inicio + timedelta(minutes=self.tipo.duracao_minutos or 30)
@@ -206,16 +219,8 @@ class Agendamento(ClinicaModel):
         if self.operadora_id:
             self.convenio = True
         if self.valor is None and self.tipo_id:
-            from convenios.models import PrecoConvenio
-            preco = PrecoConvenio.buscar(self.operadora, self.plano, self.tipo) if self.operadora_id else None
-            if self.pacote_id:
-                self.valor = 0
-            elif preco:
-                self.valor = preco.valor
-            elif self.convenio and self.tipo.valor_convenio is not None:
-                self.valor = self.tipo.valor_convenio
-            else:
-                self.valor = self.tipo.valor
+            self.valor, _ = self.preco_tabela(self.tipo, self.operadora, self.plano, self.convenio,
+                                              bool(self.pacote_id))
         super().save(*args, **kwargs)
 
     @property
