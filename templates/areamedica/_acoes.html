@@ -3,6 +3,7 @@
   {% include "areamedica/_btn.html" with s="faltou" rot="Faltou" ic="bi-person-x" cls="btn-outline-danger" %}
 {% endif %}
 {% if a.status == 'aguardando' %}
+  {% if pode_status and a.inicio|date:"Y-m-d" == hoje|date:"Y-m-d" %}<form method="post" action="{% url 'areamedica:chamar' a.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ proxima }}"><button class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone"></i> Chamar na TV</button></form>{% endif %}
   {% include "areamedica/_btn.html" with s="em_atendimento" rot="Atender" ic="bi-play-fill" cls="btn-primary" %}
 {% endif %}
 {% if a.status == 'em_atendimento' %}

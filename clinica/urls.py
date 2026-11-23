@@ -24,6 +24,7 @@ urlpatterns = [
     path('callcenter/', include('callcenter.urls')),
     path('notificacoes/', include('notificacoes.urls')),
     path('medico/', include('areamedica.urls')),
+    path('senhas/', include('senhas.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block titulo %}Senhas de atendimento{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-ticket-perforated"></i>Senhas de atendimento</h1><p>Emita, chame e acompanhe a fila do dia.</p></div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-primary" href="{{ config.caminho_tv }}" target="_blank" rel="noopener"><i class="bi bi-tv"></i> Abrir painel da TV</a>
+    {% if pode_editar %}<a class="btn btn-light border" href="{% url 'senhas:configurar' %}"><i class="bi bi-gear"></i> Configurar</a>{% endif %}
+  </div>
+</div>
+
+{% if emitida %}
+<div class="alert alert-success d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <span>Senha emitida: <b class="fs-4">{{ emitida.codigo }}</b></span>
+  <a class="btn btn-success btn-sm" href="{% url 'senhas:ticket' emitida.pk %}" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir</a>
+</div>
+{% endif %}
+
+{% if pode_editar %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-5">
+    <div class="card h-100"><div class="card-body">
+      <form method="post" action="{% url 'senhas:escolher_ponto' %}" class="mb-3">{% csrf_token %}
+        <label class="form-label small mb-1" for="pontoAtual">Estou atendendo em</label>
+        <select id="pontoAtual" name="ponto" class="form-select" onchange="this.form.submit()">
+          {% for p in pontos %}<option value="{{ p.pk }}" {% if ponto and p.pk == ponto.pk %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+        </select>
+      </form>
+      {% if atual %}
+        <div class="text-center mb-3">
+          <div class="small text-muted">{{ atual.get_status_display }}{% if atual.paciente %} · {{ atual.paciente.nome }}{% endif %}</div>
+          <div class="display-4 fw-bold">{{ atual.codigo }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-center">
+          {% if atual.status == 'chamada' %}
+          <form method="post" action="{% url 'senhas:rechamar' atual.pk %}">{% csrf_token %}<button class="btn btn-outline-primary"><i class="bi bi-arrow-repeat"></i> Chamar de novo</button></form>
+          <form method="post" action="{% url 'senhas:acao' atual.pk 'iniciar' %}">{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-play-fill"></i> Iniciar</button></form>
+          <form method="post" action="{% url 'senhas:acao' atual.pk 'ausente' %}">{% csrf_token %}<button class="btn btn-outline-danger"><i class="bi bi-person-x"></i> Não compareceu</button></form>
+          {% else %}
+          <form method="post" action="{% url 'senhas:acao' atual.pk 'concluir' %}">{% csrf_token %}<button class="btn btn-success"><i class="bi bi-check-circle"></i> Concluir</button></form>
+          {% endif %}
+        </div>
+      {% else %}
+        <form method="post" action="{% url 'senhas:proxima' %}">{% csrf_token %}
+          <button class="btn btn-primary btn-lg w-100 py-3" {% if not ponto %}disabled{% endif %}><i class="bi bi-megaphone"></i> Chamar próxima</button>
+        </form>
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100"><div class="card-body">
+      <b class="d-block mb-2">Emitir senha</b>
+      {% for sv in servicos %}
+      <form method="post" action="{% url 'senhas:emitir' %}" class="d-flex align-items-center gap-2 mb-2 flex-wrap">{% csrf_token %}
+        <input type="hidden" name="servico" value="{{ sv.pk }}">
+        <span class="flex-grow-1 fw-semibold">{{ sv.prefixo }} · {{ sv.nome }}</span>
+        <button class="btn btn-outline-primary btn-sm" name="preferencial" value="0">Normal</button>
+        <button class="btn btn-warning btn-sm" name="preferencial" value="1">Preferencial</button>
+      </form>
+      {% empty %}<p class="text-muted small mb-0">Cadastre um serviço em Configurar.</p>{% endfor %}
+    </div></div>
+  </div>
+</div>
+{% endif %}
+
+<div id="filaSenhas">{% include "senhas/_fila.html" %}</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var alvo = document.getElementById('filaSenhas');
+  setInterval(function () {
+    if (document.hidden || alvo.contains(document.activeElement)) return;
+    fetch('{% url "senhas:painel" %}?parcial=1', {credentials: 'same-origin'})
+      .then(function (r) { return r.ok && !r.redirected ? r.text() : null; })
+      .then(function (html) { if (html !== null) alvo.innerHTML = html; })
+      .catch(function () {});
+  }, 4000);
+})();
+</script>
+{% endblock %}

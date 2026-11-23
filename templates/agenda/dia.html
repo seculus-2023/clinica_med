@@ -24,6 +24,7 @@
     <div class="barra" style="border-color: {{ a.medico.cor }}">
       <a href="{% url 'agenda:detalhe' a.pk %}" class="fw-semibold text-decoration-none">{{ a.paciente.nome }}</a>
       <span class="badge-status ms-1" style="background: {{ a.cor }}">{{ a.get_status_display }}</span>
+      {% if a.senha_fila %}<span class="badge text-bg-dark"><i class="bi bi-ticket-perforated"></i> {{ a.senha_fila.codigo }}</span>{% endif %}
       {% if a.pacote_id %}<span class="badge text-bg-light border">Sessão {{ a.numero_sessao }}/{{ a.pacote.quantidade }}</span>{% endif %}
       <div class="small text-muted">{{ a.tipo }} · {{ a.medico }}{% if a.paciente.celular %} · {{ a.paciente.celular }}{% endif %}
         {% if a.confirmado_em %} · <i class="bi bi-check2-all text-success"></i> confirmado {% if a.confirmado_por == 'paciente' %}pelo paciente{% endif %}{% endif %}
@@ -31,6 +32,12 @@
     </div>
     <div class="acoes d-flex flex-wrap gap-1 justify-content-end">
       {% if pode_editar %}
+        {% if e_hoje and not a.senha_fila %}{% if a.status == 'agendado' or a.status == 'confirmado' or a.status == 'aguardando' %}
+          <form method="post" action="{% url 'senhas:agendamento_emitir' a.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-dark"><i class="bi bi-ticket-perforated"></i> Gerar senha</button></form>
+        {% endif %}{% endif %}
+        {% if e_hoje and a.status == 'aguardando' %}
+          <form method="post" action="{% url 'senhas:agendamento_chamar' a.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone"></i> Chamar na TV</button></form>
+        {% endif %}
         {% if a.status == 'agendado' %}{% include "agenda/_btn_status.html" with s="confirmado" rot="Confirmar" ic="bi-check2" cls="btn-outline-primary" %}{% endif %}
         {% if a.status == 'agendado' or a.status == 'confirmado' %}
           {% include "agenda/_btn_status.html" with s="aguardando" rot="Chegou" ic="bi-person-check" cls="btn-outline-success" %}

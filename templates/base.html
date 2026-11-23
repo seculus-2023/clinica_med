@@ -23,6 +23,7 @@
       <a class="item {% if request.path == '/agenda/' %}active{% endif %}" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3"></i>Agenda</a>
       <a class="item {% ativo '/agenda/grade' %}" href="{% url 'agenda:grade' %}"><i class="bi bi-table"></i>Grade de horários</a>
       <a class="item {% ativo '/agenda/dia' %}" href="{% url 'agenda:dia' %}"><i class="bi bi-list-check"></i>Agenda do dia / presença</a>
+      <a class="item {% ativo '/senhas' %}" href="{% url 'senhas:painel' %}"><i class="bi bi-ticket-perforated"></i>Senhas e painel TV</a>
       <a class="item" href="{% url 'areamedica:agenda' %}"><i class="bi bi-phone"></i>Área do médico (app)</a>
       <a class="item {% ativo '/agenda/espera' %}" href="{% url 'agenda:espera_list' %}"><i class="bi bi-hourglass-split"></i>Lista de espera</a>
       <a class="item {% ativo '/agenda/bloqueios' %}" href="{% url 'agenda:bloqueio_list' %}"><i class="bi bi-slash-circle"></i>Bloqueios de agenda</a>

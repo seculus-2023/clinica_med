@@ -1,0 +1,43 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Painel de senhas</title>
+<link rel="icon" type="image/png" href="{% static 'icons/favicon-32.png' %}">
+<link rel="stylesheet" href="{% static 'css/painel_tv.css' %}?v={{ PWA_VERSAO }}">
+</head>
+<body>
+<div class="tv" id="tv" data-url="{% url 'senhas:tv_dados' config.token %}">
+  <header class="topo">
+    <div class="marca">
+      {% if clinica.logo %}<img src="{{ clinica.logo.url }}" alt="">{% endif %}
+      <span id="titulo">{{ titulo }}</span>
+    </div>
+    <div class="relogio"><b id="hora">--:--</b><span id="data"></span></div>
+  </header>
+  <main class="corpo">
+    <section class="atual" id="cartaoAtual" aria-live="polite">
+      <div class="rotulo">Senha</div>
+      <div class="codigo" id="codigo">---</div>
+      <div class="pref" id="pref" hidden>Preferencial</div>
+      <div class="rotulo pequeno">Dirija-se a</div>
+      <div class="local" id="local">Aguardando chamada</div>
+    </section>
+    <aside class="anteriores">
+      <h2>Últimas chamadas</h2>
+      <ol id="lista"></ol>
+      <div class="espera"><span>Aguardando</span><b id="aguardando">0</b></div>
+    </aside>
+  </main>
+  <footer class="rodape"><span id="mensagem">{{ config.mensagem }}</span><i id="estado" hidden></i></footer>
+</div>
+<button class="ativar" id="ativar" type="button" autofocus>
+  <b>Toque ou aperte OK para ativar o som</b>
+  <span>Necessário uma vez sempre que o painel for aberto</span>
+</button>
+<script src="{% static 'js/painel_tv.js' %}?v={{ PWA_VERSAO }}"></script>
+</body>
+</html>

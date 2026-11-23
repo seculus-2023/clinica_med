@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Configurar senhas{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-gear"></i>Configurar senhas e painel</h1><p>Filas, guichês, voz e link da TV.</p></div>
+  <a class="btn btn-light border" href="{% url 'senhas:painel' %}"><i class="bi bi-arrow-left"></i> Voltar</a>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-body">
+      <b class="d-block mb-2"><i class="bi bi-tv"></i> Link da TV</b>
+      <p class="small text-muted">Abra este link no navegador da TV. Ele não pede login, então compartilhe apenas com quem instala o painel.</p>
+      <div class="input-group mb-2">
+        <input id="linkTv" class="form-control" readonly value="{{ link_tv }}" aria-label="Link da TV">
+        <button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('linkTv').value); this.textContent='Copiado'">Copiar</button>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary btn-sm" href="{{ config.caminho_tv }}" target="_blank" rel="noopener">Abrir painel</a>
+        <form method="post" action="{% url 'senhas:novo_link' %}" onsubmit="return confirm('O link atual vai parar de funcionar nas TVs. Continuar?')">{% csrf_token %}
+          <button class="btn btn-outline-danger btn-sm">Gerar novo link</button></form>
+      </div>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <b class="d-block mb-2">Painel e voz</b>
+      <form method="post">{% csrf_token %}
+        {% for f in form %}
+        <div class="mb-3">
+          {% if f.field.widget.input_type == 'checkbox' %}
+            <div class="form-check">{{ f }} <label class="form-check-label" for="{{ f.id_for_label }}">{{ f.label }}</label></div>
+          {% else %}
+            <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}
+            {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+          {% endif %}
+          {% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <button class="btn btn-primary">Salvar</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center"><b>Serviços (filas)</b><a class="btn btn-sm btn-outline-primary" href="{% url 'senhas:servico_novo' %}">+ Novo</a></div>
+      <div class="list-group list-group-flush">
+        {% for s in servicos %}<a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'senhas:servico_editar' s.pk %}"><span><b>{{ s.prefixo }}</b> · {{ s.nome }}</span>{% if not s.ativo %}<span class="badge text-bg-secondary">Inativo</span>{% endif %}</a>{% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center"><b>Guichês</b><a class="btn btn-sm btn-outline-primary" href="{% url 'senhas:ponto_novo' %}">+ Novo</a></div>
+      <div class="list-group list-group-flush">
+        {% for p in pontos %}<a class="list-group-item list-group-item-action d-flex justify-content-between" href="{% url 'senhas:ponto_editar' p.pk %}"><span>{{ p.nome }}</span>{% if not p.ativo %}<span class="badge text-bg-secondary">Inativo</span>{% endif %}</a>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

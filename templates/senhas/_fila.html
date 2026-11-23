@@ -1,0 +1,48 @@
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <b>Fila de espera ({{ fila|length }})</b>
+        <span class="small text-muted">{{ n_preferencial }} preferencia{{ n_preferencial|pluralize:"l,is" }} · {{ atendidas }} concluída{{ atendidas|pluralize }}</span>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for s in fila %}
+        <div class="list-group-item d-flex align-items-center gap-2 flex-wrap">
+          <b class="fs-5" style="min-width: 76px;">{{ s.codigo }}</b>
+          <div class="flex-grow-1" style="min-width: 130px;">
+            {% if s.preferencial %}<span class="badge text-bg-warning">Preferencial</span>{% endif %}
+            <span class="small">{{ s.servico.nome }}</span>
+            <div class="small text-muted">{{ s.criado_em|time:"H:i" }}{% if s.paciente %} · {{ s.paciente.nome }}{% endif %}</div>
+          </div>
+          {% if pode_editar %}
+          <form method="post" action="{% url 'senhas:chamar' s.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone"></i> Chamar</button></form>
+          <form method="post" action="{% url 'senhas:acao' s.pk 'cancelar' %}">{% csrf_token %}<button class="btn btn-sm btn-light" title="Cancelar senha" aria-label="Cancelar senha {{ s.codigo }}"><i class="bi bi-x-lg"></i></button></form>
+          {% endif %}
+        </div>
+        {% empty %}<div class="vazio"><i class="bi bi-ticket-perforated"></i>Nenhuma senha aguardando.</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header bg-white"><b>Em chamada / atendimento</b></div>
+      <div class="list-group list-group-flush">
+        {% for s in em_curso %}
+        <div class="list-group-item d-flex justify-content-between"><span><b>{{ s.codigo }}</b> · {{ s.local }}</span><span class="small text-muted">{{ s.get_status_display }}</span></div>
+        {% empty %}<div class="list-group-item small text-muted">Nenhuma no momento.</div>{% endfor %}
+      </div>
+    </div>
+    {% if ausentes %}
+    <div class="card">
+      <div class="card-header bg-white"><b>Não compareceram</b></div>
+      <div class="list-group list-group-flush">
+        {% for s in ausentes %}
+        <div class="list-group-item d-flex justify-content-between align-items-center"><b>{{ s.codigo }}</b>
+          {% if pode_editar %}<form method="post" action="{% url 'senhas:acao' s.pk 'devolver' %}">{% csrf_token %}<button class="btn btn-sm btn-light">Voltar à fila</button></form>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>

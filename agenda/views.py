@@ -94,7 +94,7 @@ def dia(request):
     data = parse_date(request.GET.get('data', '')) or timezone.localdate()
     tz = timezone.get_current_timezone()
     ini = timezone.make_aware(datetime.combine(data, datetime.min.time()), tz)
-    qs = _agendamentos(request).filter(inicio__gte=ini, inicio__lt=ini + timedelta(days=1))
+    qs = _agendamentos(request).select_related('senha_fila').filter(inicio__gte=ini, inicio__lt=ini + timedelta(days=1))
     if request.GET.get('medico'):
         qs = qs.filter(medico_id=request.GET['medico'])
     medicos = Medico.objects.filter(clinica=request.clinica, ativo=True)
@@ -103,6 +103,7 @@ def dia(request):
         resumo[a.status] += 1
     return render(request, 'agenda/dia.html', {
         'data': data, 'anterior': data - timedelta(days=1), 'proximo': data + timedelta(days=1),
+        'e_hoje': data == timezone.localdate(),
         'agendamentos': qs.order_by('inicio'), 'medicos': medicos, 'medico_sel': request.GET.get('medico', ''),
         'resumo': [(s, r, resumo[s], Agendamento.CORES[s]) for s, r in Agendamento.STATUS],
         'pode_editar': tem_permissao(request, 'agenda', 'editar')})

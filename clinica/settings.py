@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'callcenter',
     'notificacoes',
     'areamedica',
+    'senhas',
     'painel',
 ]
 

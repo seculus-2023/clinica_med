@@ -174,7 +174,7 @@ def paciente(request, pk):
                  .exclude(pk=ag.pk).select_related('tipo').order_by('-inicio'))
     agora = timezone.now()
     return render(request, 'areamedica/paciente.html', {
-        'medico': med, 'proprio': proprio, 'a': ag, 'p': p,
+        'medico': med, 'proprio': proprio, 'a': ag, 'p': p, 'hoje': timezone.localdate(),
         'anteriores': [h for h in historico if h.inicio < agora][:10],
         'futuros': sorted([h for h in historico if h.inicio >= agora and h.ativo], key=lambda h: h.inicio)[:5],
         'pode_status': proprio or tem_permissao(request, 'agenda', 'editar'),
@@ -205,6 +205,28 @@ def status(request, pk):
     if prox.startswith('/medico/'):
         return redirect(prox)
     return redirect(f"{reverse('areamedica:agenda')}?data={timezone.localtime(ag.inicio):%Y-%m-%d}")
+
+
+@require_POST
+def chamar(request, pk):
+    """Chama o paciente no painel de TV, por voz."""
+    from senhas.services import ErroSenha, chamar_agendamento
+
+    resp, med, proprio = _preparar(request)
+    if resp:
+        return resp
+    if not (proprio or tem_permissao(request, 'agenda', 'editar')):
+        raise PermissionDenied
+    ag = _agendamento(request, pk, med)
+    try:
+        senha = chamar_agendamento(ag, request.user)
+        messages.success(request, f'Senha {senha.codigo} chamada no painel.')
+    except ErroSenha as e:
+        messages.error(request, str(e))
+    prox = request.POST.get('next', '')
+    if prox.startswith('/medico/') and url_has_allowed_host_and_scheme(prox, {request.get_host()}):
+        return redirect(prox)
+    return redirect('areamedica:agenda')
 
 
 def manifest(request):

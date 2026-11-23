@@ -4,7 +4,7 @@ from django.shortcuts import redirect
 LIVRES = ('/conta/', '/assinatura/', '/static/', '/media/', '/sw.js', '/manifest.webmanifest', '/offline/',
           '/agenda/c/', '/agenda/online/', '/agenda/checkin/', '/agenda/avaliar/', '/agenda/tele/', '/portal/',
           '/documentos/verificar/', '/notificacoes/webhook/', '/admin/',
-          '/medico/manifest.webmanifest')
+          '/medico/manifest.webmanifest', '/senhas/tv/')
 
 
 class AssinaturaMiddleware:

@@ -12,4 +12,5 @@ urlpatterns = [
     path('manifest.webmanifest', views.manifest, name='manifest'),
     path('atendimento/<int:pk>/', views.paciente, name='paciente'),
     path('atendimento/<int:pk>/status/', views.status, name='status'),
+    path('atendimento/<int:pk>/chamar/', views.chamar, name='chamar'),
 ]
