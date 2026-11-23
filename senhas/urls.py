@@ -6,7 +6,9 @@ app_name = 'senhas'
 
 urlpatterns = [
     path('', views.painel, name='painel'),
-    path('ponto/', views.escolher_ponto, name='escolher_ponto'),
+    path('guiche/sair/', views.sair_guiche, name='sair_guiche'),
+    path('guiche/<int:pk>/assumir/', views.assumir_guiche, name='assumir_guiche'),
+    path('guiche/<int:pk>/liberar/', views.liberar_guiche, name='liberar_guiche'),
     path('emitir/', views.emitir, name='emitir'),
     path('proxima/', views.chamar, name='proxima'),
     path('<int:pk>/chamar/', views.chamar, name='chamar'),

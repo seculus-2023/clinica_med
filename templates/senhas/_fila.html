@@ -14,8 +14,10 @@
             <span class="small">{{ s.servico.nome }}</span>
             <div class="small text-muted">{{ s.criado_em|time:"H:i" }}{% if s.paciente %} · {{ s.paciente.nome }}{% endif %}</div>
           </div>
-          {% if pode_editar %}
+          {% if pode_chamar %}
           <form method="post" action="{% url 'senhas:chamar' s.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone"></i> Chamar</button></form>
+          {% endif %}
+          {% if pode_editar %}
           <form method="post" action="{% url 'senhas:acao' s.pk 'cancelar' %}">{% csrf_token %}<button class="btn btn-sm btn-light" title="Cancelar senha" aria-label="Cancelar senha {{ s.codigo }}"><i class="bi bi-x-lg"></i></button></form>
           {% endif %}
         </div>
@@ -25,10 +27,23 @@
   </div>
   <div class="col-lg-5">
     <div class="card mb-3">
+      <div class="card-header bg-white"><b>Guichês</b></div>
+      <div class="list-group list-group-flush">
+        {% for g in guiches %}
+        <div class="list-group-item d-flex justify-content-between align-items-center gap-2">
+          <span><b>{{ g.ponto.nome }}</b>
+            <span class="d-block small text-muted">{% if g.meu %}Você{% elif g.operador %}{{ g.operador }}{% else %}Livre{% endif %}</span></span>
+          {% if pode_editar and g.pode_assumir %}<form method="post" action="{% url 'senhas:assumir_guiche' g.ponto.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Assumir</button></form>{% endif %}
+          {% if pode_editar and g.pode_liberar %}<form method="post" action="{% url 'senhas:liberar_guiche' g.ponto.pk %}" onsubmit="return confirm('Liberar {{ g.ponto.nome|escapejs }}? Uma senha em andamento ficará para quem assumir o guichê.')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Liberar</button></form>{% endif %}
+        </div>
+        {% empty %}<div class="list-group-item small text-muted">Nenhum guichê ativo.</div>{% endfor %}
+      </div>
+    </div>
+    <div class="card mb-3">
       <div class="card-header bg-white"><b>Em chamada / atendimento</b></div>
       <div class="list-group list-group-flush">
         {% for s in em_curso %}
-        <div class="list-group-item d-flex justify-content-between"><span><b>{{ s.codigo }}</b> · {{ s.local }}</span><span class="small text-muted">{{ s.get_status_display }}</span></div>
+        <div class="list-group-item d-flex justify-content-between gap-2"><span><b>{{ s.codigo }}</b> · {{ s.local }}{% if s.chamada_por %}<span class="d-block small text-muted">{{ s.chamada_por }}</span>{% endif %}</span><span class="small text-muted">{{ s.get_status_display }}</span></div>
         {% empty %}<div class="list-group-item small text-muted">Nenhuma no momento.</div>{% endfor %}
       </div>
     </div>

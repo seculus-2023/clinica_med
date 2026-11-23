@@ -23,6 +23,7 @@ RELATORIOS = [
     ('nps', 'Pesquisa de satisfação (NPS)', 'bi-star', 'callcenter'),
     ('agendamentos', 'Agendamentos por período', 'bi-calendar3', 'agenda'),
     ('produtividade', 'Produtividade por profissional', 'bi-person-badge', 'agenda'),
+    ('atendentes', 'Atendimentos por atendente (senhas)', 'bi-ticket-perforated', 'agenda'),
     ('tipos', 'Atendimentos por tipo', 'bi-tags', 'agenda'),
     ('faltas', 'Faltas e cancelamentos', 'bi-calendar-x', 'agenda'),
     ('financeiro', 'Lançamentos financeiros', 'bi-cash-coin', 'financeiro'),
@@ -60,6 +61,8 @@ def _gerar(tipo, c, ini, fim, request):
         return _indicadores(c, ini, fim, ags, request)
     if tipo == 'repasse':
         return _repasse(c, ini, fim, medico)
+    if tipo == 'atendentes':
+        return _atendentes(c, ini, fim) if not restrito else (['Atendente'], [], None)
     if tipo == 'convenios':
         cab = ['Convênio', 'Atendimentos concluídos', 'Valor produzido', 'Ticket médio']
         linhas = []
@@ -201,6 +204,31 @@ def _gerar(tipo, c, ini, fim, request):
     else:
         cab, linhas = [], []
     return cab, linhas, total
+
+
+def _atendentes(c, ini, fim):
+    """Senhas chamadas e concluídas por usuário nos guichês, com o tempo médio de atendimento."""
+    from contas.models import Usuario
+    from senhas.models import ChamadaSenha, Senha
+
+    chamadas = {r['usuario']: r['n'] for r in ChamadaSenha.objects.filter(
+        clinica=c, senha__data__range=(ini, fim), ponto__isnull=False, usuario__isnull=False
+    ).values('usuario').annotate(n=Count('senha', distinct=True))}
+    concluidas = {r['concluida_por']: r for r in Senha.objects.filter(
+        clinica=c, data__range=(ini, fim), concluida_por__isnull=False, tempo_guiche__isnull=False
+    ).values('concluida_por').annotate(n=Count('id'), m=Avg('tempo_guiche'))}
+    usuarios = Usuario.objects.in_bulk(set(chamadas) | set(concluidas))
+
+    def tempo(d):
+        if not d:
+            return '-'
+        seg = int(d.total_seconds())
+        return f'{seg // 60:02d}:{seg % 60:02d}'
+
+    linhas = [[str(u), chamadas.get(pk, 0), concluidas.get(pk, {}).get('n', 0), tempo(concluidas.get(pk, {}).get('m'))]
+              for pk, u in sorted(usuarios.items(), key=lambda i: str(i[1]))]
+    total = ['Total', sum(l[1] for l in linhas), sum(l[2] for l in linhas), ''] if linhas else None
+    return ['Atendente', 'Senhas chamadas', 'Senhas concluídas', 'Tempo médio (min:seg)'], linhas, total
 
 
 def _pct(a, b):

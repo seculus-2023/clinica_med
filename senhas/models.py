@@ -37,11 +37,19 @@ class PontoAtendimento(ClinicaModel):
     """Guichê ou mesa de onde a senha é chamada."""
     nome = models.CharField(max_length=60, help_text='É o que aparece na TV e é falado. Ex.: Guichê 1.')
     ativo = models.BooleanField(default=True)
+    responsaveis = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='guiches_autorizados',
+                                          verbose_name='Usuários autorizados',
+                                          help_text='Quem pode assumir este guichê. Administradores podem assumir qualquer um.')
+    operador = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='+', editable=False, verbose_name='Em atendimento por')
+    operador_desde = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ['nome']
         verbose_name = 'Guichê'
         verbose_name_plural = 'Guichês'
+        constraints = [models.UniqueConstraint(fields=['clinica', 'operador'], condition=models.Q(operador__isnull=False),
+                                               name='senha_um_guiche_por_operador')]
 
     def __str__(self):
         return self.nome
@@ -96,6 +104,13 @@ class Senha(ClinicaModel):
     fim_em = models.DateTimeField(null=True, blank=True)
     emitida_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='+')
+    chamada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    iniciada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='+')
+    concluida_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='+')
+    tempo_guiche = models.DurationField('Tempo de atendimento no guichê', null=True, blank=True)
 
     class Meta:
         ordering = ['-preferencial', 'criado_em', 'id']
@@ -119,6 +134,9 @@ class ChamadaSenha(models.Model):
     senha = models.ForeignKey(Senha, on_delete=models.CASCADE, related_name='chamadas')
     local = models.CharField(max_length=120)
     texto = models.CharField(max_length=220)
+    ponto = models.ForeignKey(PontoAtendimento, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='+')
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

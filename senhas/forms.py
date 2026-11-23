@@ -1,6 +1,7 @@
 from django import forms
 
 from contas.crud import ClinicaModelForm
+from contas.models import Usuario
 
 from .models import ConfigPainel, PontoAtendimento, ServicoSenha
 
@@ -23,7 +24,14 @@ class ServicoForm(ClinicaModelForm):
 class PontoForm(ClinicaModelForm):
     class Meta:
         model = PontoAtendimento
-        fields = ['nome', 'ativo']
+        fields = ['nome', 'ativo', 'responsaveis']
+        widgets = {'responsaveis': forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['responsaveis'].queryset = Usuario.objects.filter(
+            vinculos__clinica=self.clinica, vinculos__ativo=True, is_active=True).distinct().order_by('first_name',
+                                                                                                     'username')
 
 
 class ConfigPainelForm(ClinicaModelForm):

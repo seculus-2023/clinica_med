@@ -35,6 +35,9 @@
         {% if e_hoje and not a.senha_fila %}{% if a.status == 'agendado' or a.status == 'confirmado' or a.status == 'aguardando' %}
           <form method="post" action="{% url 'senhas:agendamento_emitir' a.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-dark"><i class="bi bi-ticket-perforated"></i> Gerar senha</button></form>
         {% endif %}{% endif %}
+        {% if e_hoje and a.senha_fila %}
+          <a class="btn btn-sm btn-outline-dark" href="{% url 'senhas:ticket' a.senha_fila.pk %}" target="_blank" rel="noopener"><i class="bi bi-printer"></i> Imprimir senha</a>
+        {% endif %}
         {% if e_hoje and a.status == 'aguardando' %}
           <form method="post" action="{% url 'senhas:agendamento_chamar' a.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone"></i> Chamar na TV</button></form>
         {% endif %}

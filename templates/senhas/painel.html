@@ -20,13 +20,19 @@
 <div class="row g-3 mb-3">
   <div class="col-lg-5">
     <div class="card h-100"><div class="card-body">
-      <form method="post" action="{% url 'senhas:escolher_ponto' %}" class="mb-3">{% csrf_token %}
-        <label class="form-label small mb-1" for="pontoAtual">Estou atendendo em</label>
-        <select id="pontoAtual" name="ponto" class="form-select" onchange="this.form.submit()">
-          {% for p in pontos %}<option value="{{ p.pk }}" {% if ponto and p.pk == ponto.pk %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
-        </select>
-      </form>
-      {% if atual %}
+      {% if ponto %}
+      <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+        <div><div class="small text-muted">Você está atendendo em</div><b class="fs-5">{{ ponto.nome }}</b></div>
+        {% if not atual %}<form method="post" action="{% url 'senhas:sair_guiche' %}">{% csrf_token %}<button class="btn btn-sm btn-light border"><i class="bi bi-box-arrow-right"></i> Sair do guichê</button></form>{% endif %}
+      </div>
+      {% endif %}
+      {% if not ponto %}
+        <div class="text-center py-3">
+          <i class="bi bi-door-open fs-1 text-muted"></i>
+          <p class="fw-semibold mb-1 mt-2">Você não está em um guichê</p>
+          <p class="small text-muted mb-0">Clique em <b>Assumir</b> em um guichê livre, na lista Guichês abaixo.</p>
+        </div>
+      {% elif atual %}
         <div class="text-center mb-3">
           <div class="small text-muted">{{ atual.get_status_display }}{% if atual.paciente %} · {{ atual.paciente.nome }}{% endif %}</div>
           <div class="display-4 fw-bold">{{ atual.codigo }}</div>
@@ -42,7 +48,7 @@
         </div>
       {% else %}
         <form method="post" action="{% url 'senhas:proxima' %}">{% csrf_token %}
-          <button class="btn btn-primary btn-lg w-100 py-3" {% if not ponto %}disabled{% endif %}><i class="bi bi-megaphone"></i> Chamar próxima</button>
+          <button class="btn btn-primary btn-lg w-100 py-3"><i class="bi bi-megaphone"></i> Chamar próxima</button>
         </form>
       {% endif %}
     </div></div>

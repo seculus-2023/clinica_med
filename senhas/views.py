@@ -18,12 +18,6 @@ from .models import ConfigPainel, PontoAtendimento, Senha, ServicoSenha
 from .services import ErroSenha
 
 
-def _ponto_atual(request):
-    pontos = list(PontoAtendimento.objects.filter(clinica=request.clinica, ativo=True))
-    escolhido = request.session.get('senha_ponto')
-    return pontos, next((p for p in pontos if p.pk == escolhido), pontos[0] if pontos else None)
-
-
 def _senha(request, pk):
     return get_object_or_404(Senha, pk=pk, clinica=request.clinica)
 
@@ -48,39 +42,69 @@ def _voltar(request):
 def painel(request):
     config = services.garantir_padroes(request.clinica)
     data = services.hoje(request.clinica)
-    pontos, ponto = _ponto_atual(request)
+    ponto = services.guiche_do_usuario(request.clinica, request.user)
     do_dia = Senha.objects.filter(clinica=request.clinica, data=data)
     fila = list(do_dia.filter(status='aguardando').select_related('servico', 'paciente')
                 .order_by('-preferencial', 'criado_em', 'id'))
+    atual = None
+    if ponto:
+        atual = do_dia.filter(ponto=ponto, status__in=services.STATUS_ATIVOS).select_related('servico',
+                                                                                              'paciente').first()
+    pode_editar = tem_permissao(request, 'agenda', 'editar')
     ctx = {
         'fila': fila,
         'ponto': ponto,
-        'pode_editar': tem_permissao(request, 'agenda', 'editar'),
+        'pode_editar': pode_editar,
+        'pode_chamar': pode_editar and ponto is not None and atual is None,
+        'guiches': services.situacao_guiches(request.clinica, request.user),
         'n_preferencial': sum(1 for s in fila if s.preferencial),
-        'em_curso': do_dia.filter(status__in=services.STATUS_ATIVOS).select_related('servico', 'ponto')
+        'em_curso': do_dia.filter(status__in=services.STATUS_ATIVOS).select_related('servico', 'ponto', 'chamada_por')
                           .order_by('-chamada_em'),
         'atendidas': do_dia.filter(status='concluida').count(),
         'ausentes': do_dia.filter(status='ausente').select_related('servico').order_by('-fim_em')[:8],
     }
     if request.GET.get('parcial') == '1':
         return render(request, 'senhas/_fila.html', ctx)
-    atual = None
-    if ponto:
-        atual = do_dia.filter(ponto=ponto, status__in=services.STATUS_ATIVOS).select_related('servico',
-                                                                                              'paciente').first()
     emitida = None
     if str(request.GET.get('emitida', '')).isdigit():
         emitida = do_dia.filter(pk=request.GET['emitida']).first()
-    ctx.update({'config': config, 'pontos': pontos, 'atual': atual, 'emitida': emitida,
+    ctx.update({'config': config, 'atual': atual, 'emitida': emitida,
                 'servicos': ServicoSenha.objects.filter(clinica=request.clinica, ativo=True)})
     return render(request, 'senhas/painel.html', ctx)
 
 
 @require_POST
 @acesso('agenda', 'editar')
-def escolher_ponto(request):
-    ponto = get_object_or_404(PontoAtendimento, pk=request.POST.get('ponto') or 0, clinica=request.clinica, ativo=True)
-    request.session['senha_ponto'] = ponto.pk
+def assumir_guiche(request, pk):
+    ponto = get_object_or_404(PontoAtendimento, pk=pk, clinica=request.clinica)
+    try:
+        ponto = services.assumir_guiche(request.clinica, ponto, request.user)
+        messages.success(request, f'Você está atendendo em {ponto.nome}.')
+    except ErroSenha as e:
+        messages.error(request, str(e))
+    return redirect('senhas:painel')
+
+
+@require_POST
+@acesso('agenda', 'editar')
+def sair_guiche(request):
+    try:
+        ponto = services.sair_guiche(request.clinica, request.user)
+        messages.success(request, f'{ponto.nome} foi liberado.')
+    except ErroSenha as e:
+        messages.error(request, str(e))
+    return redirect('senhas:painel')
+
+
+@require_POST
+@acesso('agenda', 'editar')
+def liberar_guiche(request, pk):
+    ponto = get_object_or_404(PontoAtendimento, pk=pk, clinica=request.clinica)
+    try:
+        services.liberar_guiche(request.clinica, ponto, request.user)
+        messages.success(request, f'{ponto.nome} foi liberado.')
+    except ErroSenha as e:
+        messages.error(request, str(e))
     return redirect('senhas:painel')
 
 
@@ -95,12 +119,12 @@ def emitir(request):
 @require_POST
 @acesso('agenda', 'editar')
 def chamar(request, pk=None):
-    _, ponto = _ponto_atual(request)
+    ponto = services.guiche_do_usuario(request.clinica, request.user)
     if ponto is None:
-        messages.error(request, 'Cadastre um guichê ativo para chamar senhas.')
+        messages.error(request, 'Assuma um guichê para chamar senhas.')
         return redirect('senhas:painel')
     try:
-        senha = services.chamar_proxima(request.clinica, ponto, pk)
+        senha = services.chamar_proxima(request.clinica, ponto, request.user, pk)
         messages.success(request, f'Senha {senha.codigo} chamada em {ponto.nome}.')
     except ErroSenha as e:
         messages.error(request, str(e))
@@ -111,7 +135,7 @@ def chamar(request, pk=None):
 @acesso('agenda', 'editar')
 def rechamar(request, pk):
     try:
-        senha = services.rechamar(_senha(request, pk))
+        senha = services.rechamar(_senha(request, pk), request.user)
         messages.success(request, f'Senha {senha.codigo} chamada novamente.')
     except ErroSenha as e:
         messages.error(request, str(e))
@@ -122,7 +146,7 @@ def rechamar(request, pk):
 @acesso('agenda', 'editar')
 def acao(request, pk, nome):
     try:
-        senha = services.aplicar_acao(_senha(request, pk), nome)
+        senha = services.aplicar_acao(_senha(request, pk), nome, request.user)
         messages.success(request, f'Senha {senha.codigo}: {senha.get_status_display().lower()}.')
     except ErroSenha as e:
         messages.error(request, str(e))
@@ -171,7 +195,8 @@ def configurar(request):
         'form': form, 'config': config,
         'link_tv': request.build_absolute_uri(config.caminho_tv),
         'servicos': ServicoSenha.objects.filter(clinica=request.clinica),
-        'pontos': PontoAtendimento.objects.filter(clinica=request.clinica),
+        'pontos': PontoAtendimento.objects.filter(clinica=request.clinica).prefetch_related('responsaveis'),
+        'gestor': services.e_gestor(request.clinica, request.user),
     })
 
 
@@ -221,9 +246,9 @@ class ServicoCrud(Crud):
 
 class PontoCrud(Crud):
     model, form_class = PontoAtendimento, PontoForm
-    modulo = 'agenda'
+    modulo = 'administrativo'  # quem edita a agenda não pode se autorizar em um guichê
     nome, nome_plural, url, icone = 'Guichê', 'Guichês', 'senhas:ponto', 'bi-door-open'
-    descricao = 'Locais de onde as senhas são chamadas. O nome aparece na TV e é falado.'
-    colunas = [('nome', 'Nome'), ('ativo', 'Ativo')]
+    descricao = 'Locais de onde as senhas são chamadas e os usuários autorizados em cada um.'
+    colunas = [('nome', 'Nome'), ('responsaveis', 'Usuários autorizados'), ('ativo', 'Ativo')]
     busca = ['nome']
     url_sucesso = 'senhas:configurar'
