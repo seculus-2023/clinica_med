@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block titulo %}Medicações{% endblock %}
+{% block conteudo %}
+<h1 class="h5 fw-bold mb-1"><i class="bi bi-capsule text-primary"></i> Medicações prescritas</h1>
+<p class="small text-muted">Siga sempre a orientação do seu médico. Em caso de dúvida, fale com a clínica.</p>
+{% for r in receitas %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center gap-2">
+    <span class="small"><b>{{ r.data|date:"d/m/Y" }}</b> · {{ r.medico }}</span>
+    <a href="{% url 'portal:documento' c.codigo_publico r.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-light border" aria-label="Abrir receita"><i class="bi bi-printer"></i></a>
+  </div>
+  <ul class="list-group list-group-flush">
+    {% for i in r.itens.all %}<li class="list-group-item"><div class="fw-semibold">{{ i.nome }}</div>
+      {% if i.posologia %}<div class="small">{{ i.posologia }}</div>{% endif %}
+      {% if i.quantidade %}<div class="small text-muted">Quantidade: {{ i.quantidade }}</div>{% endif %}</li>
+    {% empty %}<li class="list-group-item small text-muted">{{ r.titulo_exibicao }}: abra a receita para ver os detalhes.</li>{% endfor %}
+  </ul>
+</div>
+{% empty %}<div class="card"><div class="card-body text-muted small">Nenhuma medicação prescrita.</div></div>{% endfor %}
+{% endblock %}

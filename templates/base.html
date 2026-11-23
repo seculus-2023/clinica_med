@@ -25,6 +25,10 @@
       <a class="item {% ativo '/agenda/dia' %}" href="{% url 'agenda:dia' %}"><i class="bi bi-list-check"></i>Agenda do dia / presença</a>
       <a class="item {% ativo '/senhas' %}" href="{% url 'senhas:painel' %}"><i class="bi bi-ticket-perforated"></i>Senhas e painel TV</a>
       <a class="item" href="{% url 'areamedica:agenda' %}"><i class="bi bi-phone"></i>Área do médico (app)</a>
+      {% if request.clinica %}
+      <a class="item" href="{% url 'portal:entrar' request.clinica.codigo_publico %}" target="_blank" rel="noopener"><i class="bi bi-globe2"></i>Portal do paciente</a>
+      <a class="item" href="{% url 'portal:entrar' request.clinica.codigo_publico %}?instalar=1" target="_blank" rel="noopener"><i class="bi bi-phone-vibrate"></i>App do paciente</a>
+      {% endif %}
       <a class="item {% ativo '/agenda/espera' %}" href="{% url 'agenda:espera_list' %}"><i class="bi bi-hourglass-split"></i>Lista de espera</a>
       <a class="item {% ativo '/agenda/bloqueios' %}" href="{% url 'agenda:bloqueio_list' %}"><i class="bi bi-slash-circle"></i>Bloqueios de agenda</a>
       <a class="item {% ativo '/agenda/recursos' %}" href="{% url 'agenda:recurso_list' %}"><i class="bi bi-door-open"></i>Salas e equipamentos</a>

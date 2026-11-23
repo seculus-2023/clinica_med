@@ -33,6 +33,7 @@
       <div><b>Convênio:</b> {{ p.convenio|default:"Particular" }} {{ p.carteirinha }}</div>
       <div><b>Responsável:</b> {{ p.responsavel|default:"-" }}</div>
       <div><b>Notificações:</b> WhatsApp {{ p.aceita_whatsapp|yesno:"sim,não" }} · e-mail {{ p.aceita_email|yesno:"sim,não" }} · campanhas {{ p.aceita_campanhas|yesno:"sim,não" }}</div>
+      <div><b>App do paciente:</b> {% if p.acesso_app %}<span class="text-success">liberado</span> · <a href="{% url 'portal:entrar' p.clinica.codigo_publico %}" target="_blank" rel="noopener">link de acesso</a>{% else %}não liberado{% endif %}</div>
       <div><b>Origem:</b> {{ p.get_origem_display|default:"-" }}</div>
       <div><b>Consentimento LGPD:</b> {% if p.consentimento_lgpd_em %}<span class="text-success">aceito em {{ p.consentimento_lgpd_em|date:"d/m/Y H:i" }}</span>{% else %}<span class="text-danger">pendente</span> (envie o link de check-in){% endif %}</div>
       {% if p.observacoes %}<div class="mt-1"><b>Obs.:</b> {{ p.observacoes|linebreaksbr }}</div>{% endif %}

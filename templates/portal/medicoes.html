@@ -1,0 +1,28 @@
+{% extends "portal/base.html" %}
+{% block titulo %}Medições{% endblock %}
+{% block conteudo %}
+<h1 class="h5 fw-bold mb-3"><i class="bi bi-activity text-primary"></i> Minhas medições</h1>
+{% for a in sinais %}
+<div class="card mb-2"><div class="card-body py-2">
+  <div class="fw-semibold small mb-1">{{ a.data|date:"d/m/Y" }}</div>
+  <div class="row row-cols-2 row-cols-sm-3 g-1 small">
+    {% if a.pa %}<div class="col"><span class="text-muted">Pressão</span> <b>{{ a.pa }}</b> mmHg</div>{% endif %}
+    {% if a.fc %}<div class="col"><span class="text-muted">Batimentos</span> <b>{{ a.fc }}</b> bpm</div>{% endif %}
+    {% if a.fr %}<div class="col"><span class="text-muted">Respiração</span> <b>{{ a.fr }}</b> irpm</div>{% endif %}
+    {% if a.temperatura %}<div class="col"><span class="text-muted">Temperatura</span> <b>{{ a.temperatura }}</b> °C</div>{% endif %}
+    {% if a.spo2 %}<div class="col"><span class="text-muted">Oxigenação</span> <b>{{ a.spo2 }}</b>%</div>{% endif %}
+    {% if a.glicemia %}<div class="col"><span class="text-muted">Glicemia</span> <b>{{ a.glicemia }}</b> mg/dL</div>{% endif %}
+    {% if a.peso %}<div class="col"><span class="text-muted">Peso</span> <b>{{ a.peso }}</b> kg</div>{% endif %}
+    {% if a.altura %}<div class="col"><span class="text-muted">Altura</span> <b>{{ a.altura }}</b> cm</div>{% endif %}
+    {% if a.imc %}<div class="col"><span class="text-muted">IMC</span> <b>{{ a.imc }}</b></div>{% endif %}
+    {% if a.dor is not None %}<div class="col"><span class="text-muted">Dor</span> <b>{{ a.dor }}</b>/10</div>{% endif %}
+  </div>
+</div></div>
+{% empty %}<div class="card mb-3"><div class="card-body text-muted small">Nenhuma medição registrada.</div></div>{% endfor %}
+{% if resultados %}
+<div class="card mt-3"><div class="card-header fw-semibold"><i class="bi bi-clipboard2-pulse"></i> Resultados de exames</div>
+  <div class="table-responsive"><table class="table table-sm mb-0">
+    {% for r in resultados %}<tr><td>{{ r.data|date:"d/m/y" }}</td><td>{{ r.exame.nome }}</td><td class="num {% if r.situacao != 'normal' %}text-danger fw-semibold{% endif %}">{{ r.valor_fmt }} {{ r.exame.unidade }}</td><td class="small text-muted">ref. {{ r.exame.referencia }}</td></tr>{% endfor %}
+  </table></div></div>
+{% endif %}
+{% endblock %}

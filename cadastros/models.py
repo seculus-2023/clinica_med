@@ -101,6 +101,9 @@ class Paciente(ClinicaModel):
     aceita_email = models.BooleanField('Aceita receber e-mail', default=True)
     aceita_sms = models.BooleanField('Aceita receber SMS', default=True)
     aceita_campanhas = models.BooleanField('Aceita receber campanhas', default=True)
+    acesso_app = models.BooleanField('Tem acesso ao app do paciente', default=False,
+                                     help_text='Permite entrar no app com CPF, data de nascimento e código '
+                                               'enviado ao WhatsApp/e-mail do cadastro.')
     consentimento_lgpd_em = models.DateTimeField('Consentimento LGPD em', null=True, blank=True, editable=False)
     ativo = models.BooleanField(default=True)
 

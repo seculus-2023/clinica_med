@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block titulo %}Avisos{% endblock %}
+{% block conteudo %}
+<div class="card mb-3"><div class="card-header fw-semibold"><i class="bi bi-send"></i> Avisar a clínica</div><div class="card-body">
+  <div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle"></i> Em caso de urgência ou emergência, ligue 192 ou procure um pronto-socorro. Este canal não é monitorado em tempo real.</div>
+  <form method="post" novalidate>{% csrf_token %}<div class="row g-3">
+    {% include "_campo.html" with f=form.tipo col="col-md-6" %}
+    {% include "_campo.html" with f=form.agendamento col="col-md-6" %}
+    {% include "_campo.html" with f=form.mensagem col="col-12" %}
+  </div><button class="btn btn-primary w-100 mt-3"><i class="bi bi-send"></i> Enviar aviso</button></form>
+</div></div>
+
+<div class="card mb-3"><div class="card-header fw-semibold"><i class="bi bi-bell"></i> Mensagens da clínica</div><ul class="list-group list-group-flush">
+  {% for n in recebidos %}<li class="list-group-item small"><div class="text-muted">{{ n.criado_em|date:"d/m/Y H:i" }}</div>{{ n.mensagem|linebreaksbr }}</li>
+  {% empty %}<li class="list-group-item small text-muted">Nenhuma mensagem.</li>{% endfor %}</ul></div>
+
+<div class="card"><div class="card-header fw-semibold"><i class="bi bi-clock-history"></i> Avisos enviados</div><ul class="list-group list-group-flush">
+  {% for a in enviados %}<li class="list-group-item small"><div class="d-flex justify-content-between gap-2"><b>{{ a.get_tipo_display }}</b><span class="text-muted">{{ a.criado_em|date:"d/m/Y H:i" }}</span></div>{{ a.mensagem }}</li>
+  {% empty %}<li class="list-group-item small text-muted">Nenhum aviso enviado.</li>{% endfor %}</ul></div>
+{% endblock %}

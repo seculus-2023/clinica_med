@@ -1,0 +1,25 @@
+{% extends "portal/base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Documentos e pagamentos{% endblock %}
+{% block conteudo %}
+<div class="card mb-3"><div class="card-header fw-semibold"><i class="bi bi-file-earmark-medical"></i> Receitas, atestados e documentos</div><ul class="list-group list-group-flush">
+  {% for d in documentos %}<li class="list-group-item d-flex justify-content-between gap-2"><span>{{ d.titulo_exibicao }} <span class="small text-muted">{{ d.data|date:"d/m/Y" }} · {{ d.medico }}</span></span>
+    <a href="{% url 'portal:documento' c.codigo_publico d.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-light border" aria-label="Abrir documento"><i class="bi bi-printer"></i></a></li>{% endfor %}
+  {% for d in assinados %}<li class="list-group-item d-flex justify-content-between gap-2"><span>{{ d.nome_arquivo }} <span class="small text-muted">{{ d.assinado_em|date:"d/m/Y" }} · assinado</span></span>
+    <a href="{% url 'portal:assinado' c.codigo_publico d.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-light border" aria-label="Abrir PDF"><i class="bi bi-file-earmark-pdf"></i></a></li>{% endfor %}
+  {% if not documentos and not assinados %}<li class="list-group-item text-muted small">Nenhum documento.</li>{% endif %}</ul></div>
+
+<div class="card mb-3"><div class="card-header fw-semibold"><i class="bi bi-clipboard2-pulse"></i> Exames e laudos</div><ul class="list-group list-group-flush">
+  {% for x in exames %}<li class="list-group-item d-flex justify-content-between gap-2"><span>{{ x.titulo }} <span class="small text-muted">{{ x.data|date:"d/m/Y" }}</span></span>
+    {% if x.arquivo %}<a href="{% url 'portal:exame' c.codigo_publico x.pk %}" target="_blank" rel="noopener" class="btn btn-sm btn-light border" aria-label="Baixar exame"><i class="bi bi-download"></i></a>{% endif %}</li>
+  {% empty %}<li class="list-group-item text-muted small">Nenhum exame liberado.</li>{% endfor %}</ul></div>
+
+<div class="card mb-3"><div class="card-header fw-semibold"><i class="bi bi-receipt"></i> Pagamentos</div><ul class="list-group list-group-flush">
+  {% for l in pendentes %}<li class="list-group-item d-flex justify-content-between gap-2 small"><span>{{ l.descricao }} · vence {{ l.vencimento|date:"d/m/Y" }}</span><b class="{% if l.atrasado %}text-danger{% endif %}">{{ l.valor|moeda }}</b></li>{% endfor %}
+  {% for l in recibos %}<li class="list-group-item d-flex justify-content-between gap-2 small"><span>{{ l.descricao }} · pago {{ l.data_pagamento|date:"d/m/Y" }}</span>
+    <span>{{ l.valor_pago|default:l.valor|moeda }} <a href="{% url 'portal:recibo' c.codigo_publico l.pk %}" target="_blank" rel="noopener" class="ms-1" aria-label="Recibo"><i class="bi bi-receipt"></i></a></span></li>{% endfor %}
+  {% if not pendentes and not recibos %}<li class="list-group-item text-muted small">Nenhum pagamento.</li>{% endif %}</ul></div>
+
+<div class="card"><div class="card-header fw-semibold"><i class="bi bi-clock-history"></i> Histórico de atendimentos</div><ul class="list-group list-group-flush">
+  {% for a in historico %}<li class="list-group-item small">{{ a.inicio|date:"d/m/Y" }} — {{ a.tipo }} · {{ a.medico }}</li>{% empty %}<li class="list-group-item text-muted small">Nenhum atendimento.</li>{% endfor %}</ul></div>
+{% endblock %}

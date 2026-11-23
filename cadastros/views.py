@@ -21,6 +21,25 @@ class PacienteForm(ClinicaModelForm):
         model = Paciente
         exclude = []
 
+    def clean(self):
+        d = super().clean()
+        if not d.get('acesso_app'):
+            return d
+        digitos = lambda s: ''.join(c for c in str(s or '') if c.isdigit())
+        cpf, nascimento = digitos(d.get('cpf')), d.get('data_nascimento')
+        if len(cpf) != 11:
+            self.add_error('cpf', 'Informe o CPF com 11 dígitos para liberar o app.')
+        if not nascimento:
+            self.add_error('data_nascimento', 'Informe a data de nascimento para liberar o app.')
+        if not (d.get('celular') or d.get('email')):
+            self.add_error('celular', 'Informe celular ou e-mail para o paciente receber o código de acesso.')
+        if len(cpf) == 11 and nascimento:
+            outros = Paciente.objects.filter(clinica=self.clinica, ativo=True, acesso_app=True,
+                                             data_nascimento=nascimento).exclude(pk=self.instance.pk)
+            if any(digitos(o.cpf) == cpf for o in outros):
+                self.add_error('cpf', 'Já existe paciente com acesso ao app com este CPF e nascimento.')
+        return d
+
 
 class AssinaturaWidget(forms.ClearableFileInput):
     template_name = 'widgets/assinatura.html'
@@ -145,7 +164,7 @@ class PacienteCrud(Crud):
     model, form_class = Paciente, PacienteForm
     nome, nome_plural, url, icone = 'Paciente', 'Pacientes', 'cadastros:paciente', 'bi-person-heart'
     colunas = [('nome', 'Nome'), ('cpf', 'CPF'), ('celular', 'Celular'), ('idade', 'Idade'),
-               ('convenio', 'Convênio'), ('ativo', 'Ativo')]
+               ('convenio', 'Convênio'), ('acesso_app', 'App'), ('ativo', 'Ativo')]
     busca = ['nome', 'cpf', 'celular', 'email']
     filtros = [('ativo', 'Situação', ATIVO)]
     acoes_linha = [('prontuario:paciente', 'bi-journal-medical', 'Prontuário'),
