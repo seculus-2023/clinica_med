@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titulo %}Registrar manifestação{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-megaphone"></i>Registrar manifestação</h1><p>Para atendimentos presenciais, por telefone, e-mail ou WhatsApp. O manifestante recebe protocolo e chave de acesso.</p></div>
+  <a href="{% url 'ouvidoria:painel' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Voltar</a>
+</div>
+<form method="post" class="card" novalidate>{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <h6 class="text-muted text-uppercase small fw-bold">Manifestação</h6>
+    <div class="row g-3 mb-4">
+      {% include "_campo.html" with f=form.tipo col="col-md-4" %}
+      {% include "_campo.html" with f=form.canal col="col-md-4" %}
+      {% include "_campo.html" with f=form.prioridade col="col-md-4" %}
+      {% include "_campo.html" with f=form.assunto col="col-md-8" %}
+      {% include "_campo.html" with f=form.data_ocorrido col="col-md-4" %}
+      {% include "_campo.html" with f=form.descricao col="col-12" %}
+      {% include "_campo.html" with f=form.setor col="col-md-6" %}
+      {% include "_campo.html" with f=form.medico col="col-md-6" %}
+    </div>
+    <h6 class="text-muted text-uppercase small fw-bold">Manifestante</h6>
+    <div class="row g-3">
+      {% include "_campo.html" with f=form.anonima col="col-md-4" %}
+      {% include "_campo.html" with f=form.sigilosa col="col-md-4" %}
+      {% include "_campo.html" with f=form.aceita_contato col="col-md-4" %}
+      {% include "_campo.html" with f=form.paciente col="col-md-6" %}
+      {% include "_campo.html" with f=form.relacao col="col-md-6" %}
+      {% include "_campo.html" with f=form.nome col="col-md-4" %}
+      {% include "_campo.html" with f=form.telefone col="col-md-4" %}
+      {% include "_campo.html" with f=form.email col="col-md-4" %}
+    </div>
+  </div>
+  <div class="card-footer bg-transparent text-end"><button class="btn btn-primary"><i class="bi bi-check2"></i> Registrar</button></div>
+</form>
+{% endblock %}

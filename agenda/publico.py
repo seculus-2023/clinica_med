@@ -192,5 +192,8 @@ def avaliar(request, token):
         if av.classificacao == 'detrator':
             Lembrete.objects.create(clinica=ag.clinica, origem='nps', titulo=f'Avaliação baixa (NPS {av.nota}): {ag.paciente}',
                                     mensagem=av.comentario, link=reverse('agenda:detalhe', args=[ag.pk]))
-        return render(request, 'agenda/publico/avaliar.html', {'c': ag.clinica, 'ag': ag, 'av': av, 'obrigado': True})
+        from ouvidoria.services import abrir_por_nps
+        manifestacao = abrir_por_nps(av)
+        return render(request, 'agenda/publico/avaliar.html', {'c': ag.clinica, 'ag': ag, 'av': av, 'obrigado': True,
+                                                               'manifestacao': manifestacao})
     return render(request, 'agenda/publico/avaliar.html', {'c': ag.clinica, 'ag': ag, 'form': form})

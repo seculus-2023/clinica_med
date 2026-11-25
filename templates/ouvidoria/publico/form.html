@@ -1,0 +1,51 @@
+{% extends "agenda/publico/_base.html" %}
+{% block titulo %}Ouvidoria{% endblock %}
+{% block conteudo %}
+<div class="row justify-content-center"><div class="col-lg-8">
+<div class="card"><div class="card-body p-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <h1 class="h4 fw-bold"><i class="bi bi-megaphone text-primary"></i> Ouvidoria</h1>
+    <a href="{% url 'ouvidoria:consultar' c.codigo_publico %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> Acompanhar protocolo</a>
+  </div>
+  {% if fechado %}
+    <div class="alert alert-secondary mt-3">O registro pela internet está indisponível. Fale com a clínica{% if c.telefone %} pelo telefone {{ c.telefone }}{% endif %}.</div>
+  {% else %}
+  {% if config.apresentacao %}<p class="text-muted">{{ config.apresentacao }}</p>{% endif %}
+  <div class="alert alert-warning small py-2"><i class="bi bi-exclamation-triangle"></i> Em caso de urgência ou emergência, ligue 192 ou procure um pronto-socorro. Para marcar ou cancelar consultas, use o agendamento.</div>
+  <form method="post" novalidate>{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="row g-3">
+      {% include "_campo.html" with f=form.tipo col="col-md-6" %}
+      {% include "_campo.html" with f=form.data_ocorrido col="col-md-6" %}
+      {% include "_campo.html" with f=form.assunto col="col-12" %}
+      {% include "_campo.html" with f=form.descricao col="col-12" %}
+      {% include "_campo.html" with f=form.setor col="col-md-6" %}
+      {% include "_campo.html" with f=form.medico col="col-md-6" %}
+    </div>
+    <h2 class="h6 fw-bold mt-4">Identificação</h2>
+    <div class="row g-3">
+      {% if form.anonima %}{% include "_campo.html" with f=form.anonima col="col-12" %}{% endif %}
+      <div class="col-12" id="identificacao"><div class="row g-3">
+        {% include "_campo.html" with f=form.nome col="col-md-6" %}
+        {% include "_campo.html" with f=form.relacao col="col-md-6" %}
+        {% include "_campo.html" with f=form.telefone col="col-md-6" %}
+        {% include "_campo.html" with f=form.email col="col-md-6" %}
+        {% include "_campo.html" with f=form.sigilosa col="col-12" %}
+      </div></div>
+      {% include "_campo.html" with f=form.lgpd col="col-12" %}
+      {{ form.site }}
+    </div>
+    <button class="btn btn-primary btn-lg w-100 mt-4"><i class="bi bi-send"></i> Enviar manifestação</button>
+  </form>
+  {% endif %}
+</div></div>
+</div></div>
+<script>
+  (function () {
+    var anon = document.getElementById('id_anonima'), bloco = document.getElementById('identificacao');
+    if (!anon || !bloco) return;
+    function aplicar() { bloco.hidden = anon.checked; }
+    anon.addEventListener('change', aplicar); aplicar();
+  })();
+</script>
+{% endblock %}

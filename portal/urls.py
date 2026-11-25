@@ -17,6 +17,7 @@ urlpatterns = [
     path('<uuid:codigo>/medicoes/', views.medicoes, name='medicoes'),
     path('<uuid:codigo>/avisos/', views.avisos, name='avisos'),
     path('<uuid:codigo>/mais/', views.mais, name='mais'),
+    path('<uuid:codigo>/ouvidoria/', views.ouvidoria, name='ouvidoria'),
     path('<uuid:codigo>/documento/<int:pk>/', views.documento, name='documento'),
     path('<uuid:codigo>/assinado/<int:pk>/', views.assinado, name='assinado'),
     path('<uuid:codigo>/exame/<int:pk>/', views.exame, name='exame'),

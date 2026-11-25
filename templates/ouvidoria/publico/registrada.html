@@ -1,0 +1,20 @@
+{% extends "agenda/publico/_base.html" %}
+{% block titulo %}Manifestação registrada{% endblock %}
+{% block conteudo %}
+<div class="row justify-content-center"><div class="col-lg-7">
+<div class="card"><div class="card-body p-4">
+  <h1 class="h4 fw-bold"><i class="bi bi-check-circle text-success"></i> Manifestação registrada</h1>
+  <p class="text-muted">Guarde o protocolo e a chave de acesso: são eles que permitem acompanhar a resposta. A chave não será exibida novamente.</p>
+  <div class="row g-3 my-2 text-center">
+    <div class="col-sm-6"><div class="border rounded p-3"><div class="small text-muted">Protocolo</div><div class="fs-4 fw-bold">{{ m.protocolo }}</div></div></div>
+    <div class="col-sm-6"><div class="border rounded p-3"><div class="small text-muted">Chave de acesso</div><div class="fs-4 fw-bold font-monospace">{{ chave }}</div></div></div>
+  </div>
+  <p>Prazo de resposta: <b>{{ m.prazo|date:"d/m/Y" }}</b>.{% if m.identificada and m.aceita_contato %} Você também receberá um aviso no contato informado.{% endif %}</p>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{ m.caminho_publico }}" class="btn btn-primary"><i class="bi bi-search"></i> Acompanhar agora</a>
+    <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+  </div>
+  <p class="small text-muted mt-3 mb-0 text-break">Link de acompanhamento: {{ link }}</p>
+</div></div>
+</div></div>
+{% endblock %}

@@ -25,6 +25,7 @@ urlpatterns = [
     path('notificacoes/', include('notificacoes.urls')),
     path('medico/', include('areamedica.urls')),
     path('senhas/', include('senhas.urls')),
+    path('ouvidoria/', include('ouvidoria.urls')),
 ]
 
 if settings.DEBUG:

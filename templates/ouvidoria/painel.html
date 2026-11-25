@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Ouvidoria{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-megaphone"></i>Ouvidoria</h1><p>{% if modulo %}Reclamações, sugestões, elogios, denúncias e solicitações com protocolo e prazo.{% else %}Registre manifestações de pacientes e acompanhe as que foram encaminhadas a você.{% endif %}</p></div>
+  <div class="d-flex gap-2">
+    {% if pode_editar %}<a href="{% url 'ouvidoria:configurar' %}" class="btn btn-light border"><i class="bi bi-gear"></i> Configurar</a>{% endif %}
+    <a href="{% url 'ouvidoria:nova' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Registrar manifestação</a>
+  </div>
+</div>
+{% if k %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg"><div class="card kpi"><div class="ic ic-blue"><i class="bi bi-inbox"></i></div><div><div class="v">{{ k.abertas }}</div><div class="l">Em aberto</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card kpi"><div class="ic ic-red"><i class="bi bi-alarm"></i></div><div><div class="v">{{ k.vencidas }}</div><div class="l">Prazo vencido</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card kpi"><div class="ic ic-amber"><i class="bi bi-hourglass-split"></i></div><div><div class="v">{{ k.vencendo }}</div><div class="l">Vencem em 2 dias</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card kpi"><div class="ic ic-teal"><i class="bi bi-stopwatch"></i></div><div><div class="v">{% if k.tempo is not None %}{{ k.tempo }}d{% else %}-{% endif %}</div><div class="l">1ª resposta (média){% if k.no_prazo is not None %} · {{ k.no_prazo }}% no prazo{% endif %}</div></div></div></div>
+  <div class="col-12 col-lg"><div class="card kpi"><div class="ic ic-green"><i class="bi bi-emoji-smile"></i></div><div><div class="v">{% if k.satisfacao %}{{ k.satisfacao|floatformat:1 }}{% else %}-{% endif %}</div><div class="l">Satisfação com a resposta (1–5)</div></div></div></div>
+</div>
+{% if por_tipo %}<div class="d-flex flex-wrap gap-2 mb-3 small">{% for t in por_tipo %}<a href="?aba=abertas&tipo={{ t.tipo }}" class="badge text-bg-light border text-decoration-none">{{ t.nome }}: {{ t.n }}</a>{% endfor %}</div>{% endif %}
+{% endif %}
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  <ul class="nav nav-pills">
+    {% if modulo %}
+    <li class="nav-item"><a class="nav-link {% if aba == 'abertas' %}active{% endif %}" href="?aba=abertas">Em aberto</a></li>
+    <li class="nav-item"><a class="nav-link {% if aba == 'vencidas' %}active{% endif %}" href="?aba=vencidas">Vencidas</a></li>
+    {% endif %}
+    <li class="nav-item"><a class="nav-link {% if aba == 'minhas' %}active{% endif %}" href="?aba=minhas">Comigo{% if k.minhas %} ({{ k.minhas }}){% endif %}</a></li>
+    {% if modulo %}
+    <li class="nav-item"><a class="nav-link {% if aba == 'respondidas' %}active{% endif %}" href="?aba=respondidas">Respondidas</a></li>
+    <li class="nav-item"><a class="nav-link {% if aba == 'encerradas' %}active{% endif %}" href="?aba=encerradas">Encerradas</a></li>
+    {% endif %}
+    <li class="nav-item"><a class="nav-link {% if aba == 'todas' %}active{% endif %}" href="?aba=todas">Todas</a></li>
+  </ul>
+  {% if modulo %}
+  <form class="ms-auto d-flex flex-wrap gap-2"><input type="hidden" name="aba" value="{{ aba }}">
+    <input name="q" value="{{ q }}" class="form-control" placeholder="Protocolo, assunto, nome..." aria-label="Buscar">
+    <select name="tipo" class="form-select" onchange="this.form.submit()" aria-label="Tipo"><option value="">Todos os tipos</option>{% for v, r in tipos %}<option value="{{ v }}" {% if sel.tipo == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+    <select name="setor" class="form-select" onchange="this.form.submit()" aria-label="Setor"><option value="">Todos os setores</option>{% for s in setores %}<option value="{{ s.pk }}" {% if sel.setor == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    <select name="canal" class="form-select" onchange="this.form.submit()" aria-label="Canal"><option value="">Todos os canais</option>{% for v, r in canais %}<option value="{{ v }}" {% if sel.canal == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select>
+  </form>
+  {% endif %}
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle">
+  <thead><tr><th>Protocolo</th><th>Tipo</th><th>Assunto</th><th>Setor</th><th>Status</th><th>Prazo</th><th>Responsável</th><th></th></tr></thead>
+  <tbody>{% for m in manifestacoes %}
+    <tr {% if m.vencida %}class="table-danger"{% elif m.vence_logo %}class="table-warning"{% endif %}>
+      <td class="fw-semibold text-nowrap">{% if m.prioridade == 1 %}<i class="bi bi-flag-fill text-danger" title="Prioridade alta"></i> {% endif %}{{ m.protocolo }}<div class="small text-muted fw-normal">{{ m.criado_em|date:"d/m/Y" }} · {{ m.get_canal_display }}</div></td>
+      <td>{{ m.get_tipo_display }}</td>
+      <td>{{ m.assunto|truncatechars:70 }}</td>
+      <td>{{ m.setor|default:"-" }}</td>
+      <td>{% include "ouvidoria/_status.html" %}</td>
+      <td class="text-nowrap">{{ m.prazo|date:"d/m/Y" }}{% if m.aberta %}<div class="small {% if m.vencida %}text-danger{% else %}text-muted{% endif %}">{% if m.vencida %}vencida{% else %}{{ m.dias_restantes }} dia(s){% endif %}</div>{% endif %}</td>
+      <td>{{ m.responsavel|default:"-" }}</td>
+      <td class="text-end"><a href="{% url 'ouvidoria:detalhe' m.pk %}" class="btn btn-sm btn-primary">Abrir</a></td></tr>
+  {% empty %}<tr><td colspan="8"><div class="vazio"><i class="bi bi-inbox"></i>Nenhuma manifestação nesta lista.</div></td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

@@ -47,6 +47,9 @@
       <a class="item {% ativo '/callcenter' %}" href="{% url 'callcenter:fila' %}"><i class="bi bi-headset"></i>Call center</a>
       <a class="item {% ativo '/notificacoes/conversas' %}" href="{% url 'notificacoes:conversas' %}"><i class="bi bi-chat-dots"></i>Conversas WhatsApp</a>
       {% endif %}
+      {% if perm|pode:'ouvidoria' %}
+      <a class="item {% ativo '/ouvidoria' %}" href="{% url 'ouvidoria:painel' %}"><i class="bi bi-megaphone"></i>Ouvidoria</a>
+      {% endif %}
       {% if perm|edita:'callcenter' %}
       <a class="item {% ativo '/notificacoes/campanhas' %}" href="{% url 'notificacoes:campanhas' %}"><i class="bi bi-megaphone"></i>Campanhas</a>
       {% endif %}
@@ -102,6 +105,7 @@
 
       <div class="sec">Sistema</div>
       <a class="item {% ativo '/conta/lembretes' %}" href="{% url 'contas:lembrete_list' %}"><i class="bi bi-bell"></i>Lembretes</a>
+      {% if not perm|pode:'ouvidoria' %}<a class="item {% ativo '/ouvidoria' %}" href="{% url 'ouvidoria:painel' %}"><i class="bi bi-megaphone"></i>Ouvidoria</a>{% endif %}
       {% if perm|pode:'administrativo' %}
       <a class="item {% ativo '/conta/usuarios' %}" href="{% url 'contas:usuarios' %}"><i class="bi bi-people"></i>Usuários</a>
       <a class="item {% ativo '/conta/perfis' %}" href="{% url 'contas:perfis' %}"><i class="bi bi-shield-lock"></i>Perfis de acesso</a>

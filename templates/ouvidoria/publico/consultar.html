@@ -1,0 +1,19 @@
+{% extends "agenda/publico/_base.html" %}
+{% block titulo %}Acompanhar manifestação{% endblock %}
+{% block conteudo %}
+<div class="row justify-content-center"><div class="col-lg-6">
+<div class="card"><div class="card-body p-4">
+  <h1 class="h4 fw-bold"><i class="bi bi-search text-primary"></i> Acompanhar manifestação</h1>
+  <p class="text-muted">Informe o protocolo e a chave de acesso recebidos no registro.</p>
+  <form method="post" novalidate>{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    <div class="row g-3">
+      {% include "_campo.html" with f=form.protocolo col="col-sm-6" %}
+      {% include "_campo.html" with f=form.chave col="col-sm-6" %}
+    </div>
+    <button class="btn btn-primary w-100 mt-3">Consultar</button>
+  </form>
+  {% if config.formulario_publico %}<p class="small text-center mt-3 mb-0"><a href="{% url 'ouvidoria:publico' c.codigo_publico %}">Registrar uma nova manifestação</a></p>{% endif %}
+</div></div>
+</div></div>
+{% endblock %}

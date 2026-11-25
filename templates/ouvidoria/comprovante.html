@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Protocolo {{ m.protocolo }}{% endblock %}
+{% block head %}<style>@media print { .sidebar, .topbar, .no-print, .alert-dismissible { display: none !important; } .main { margin: 0 !important; } }</style>{% endblock %}
+{% block conteudo %}
+<div class="page-head no-print">
+  <div><h1><i class="bi bi-receipt"></i>Comprovante da manifestação</h1><p>Entregue ou informe ao manifestante. A chave de acesso aparece só nesta tela.</p></div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-light border" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+    {% if modulo %}<a href="{% url 'ouvidoria:detalhe' m.pk %}" class="btn btn-primary">Abrir manifestação</a>{% else %}<a href="{% url 'ouvidoria:painel' %}" class="btn btn-light">Voltar</a>{% endif %}
+  </div>
+</div>
+<div class="card" style="max-width: 640px;"><div class="card-body p-4">
+  <h2 class="h5 fw-bold">{{ request.clinica.nome }} · Ouvidoria</h2>
+  <dl class="row mb-0 mt-3">
+    <dt class="col-sm-5">Protocolo</dt><dd class="col-sm-7 fs-5 fw-bold">{{ m.protocolo }}</dd>
+    <dt class="col-sm-5">Chave de acesso</dt><dd class="col-sm-7 fs-5 fw-bold font-monospace">{% if chave %}{{ chave }}{% else %}<span class="fs-6 fw-normal text-muted">exibida apenas no registro</span>{% endif %}</dd>
+    <dt class="col-sm-5">Tipo</dt><dd class="col-sm-7">{{ m.get_tipo_display }}</dd>
+    <dt class="col-sm-5">Registrada em</dt><dd class="col-sm-7">{{ m.criado_em|date:"d/m/Y H:i" }}</dd>
+    <dt class="col-sm-5">Resposta até</dt><dd class="col-sm-7">{{ m.prazo|date:"d/m/Y" }}</dd>
+  </dl>
+  <p class="small text-muted mt-3 mb-1">Acompanhe pela internet com o protocolo e a chave, ou pelo link:</p>
+  <div class="small text-break">{{ link }}</div>
+</div></div>
+{% endblock %}

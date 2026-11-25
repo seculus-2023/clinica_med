@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'notificacoes',
     'areamedica',
     'senhas',
+    'ouvidoria',
     'painel',
 ]
 

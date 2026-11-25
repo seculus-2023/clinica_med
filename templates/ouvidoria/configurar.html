@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Configurar ouvidoria{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-gear"></i>Configurar ouvidoria</h1><p>Prazos, alertas, formulário público e setores.</p></div>
+  <a class="btn btn-light border" href="{% url 'ouvidoria:painel' %}"><i class="bi bi-arrow-left"></i> Voltar</a>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <form method="post" class="card" novalidate>{% csrf_token %}
+      <div class="card-body"><div class="row g-3">
+        {% for f in form %}
+          {% if f.widget_type == 'textarea' or f.widget_type == 'checkbox' %}{% include "_campo.html" with col="col-12" %}
+          {% else %}{% include "_campo.html" with col="col-md-6" %}{% endif %}
+        {% endfor %}
+      </div></div>
+      <div class="card-footer bg-transparent text-end"><button class="btn btn-primary"><i class="bi bi-check2"></i> Salvar</button></div>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-body">
+      <b class="d-block mb-2"><i class="bi bi-globe2"></i> Formulário público</b>
+      <p class="small text-muted">Divulgue no site, nas redes sociais, em QR Code na recepção ou na assinatura de e-mail. A consulta por protocolo fica no mesmo endereço.</p>
+      <div class="input-group mb-2">
+        <input id="linkOuv" class="form-control" readonly value="{{ link }}" aria-label="Link do formulário">
+        <button class="btn btn-outline-primary" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('linkOuv').value); this.textContent='Copiado'">Copiar</button>
+      </div>
+      <a class="btn btn-primary btn-sm" href="{{ caminho }}" target="_blank" rel="noopener">Abrir formulário</a>
+      {% if not config.formulario_publico %}<div class="text-danger small mt-2">O formulário está desativado.</div>{% endif %}
+    </div></div>
+    <div class="card">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center"><b>Setores</b><a class="btn btn-sm btn-outline-primary" href="{% url 'ouvidoria:setor_novo' %}">+ Novo</a></div>
+      <div class="list-group list-group-flush">
+        {% for s in setores %}<a class="list-group-item list-group-item-action d-flex justify-content-between gap-2" href="{% url 'ouvidoria:setor_editar' s.pk %}">
+          <span>{{ s.nome }}<span class="d-block small text-muted">{{ s.responsavel|default:"Sem responsável" }}{% if not s.publico %} · só interno{% endif %}</span></span>
+          {% if not s.ativo %}<span class="badge text-bg-secondary align-self-center">Inativo</span>{% endif %}</a>
+        {% empty %}<div class="list-group-item small text-muted">Nenhum setor.</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

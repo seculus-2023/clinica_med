@@ -133,6 +133,11 @@ def aniversariantes(clinica):
     return n
 
 
+def _ouvidoria(clinica):
+    from ouvidoria.services import rotina_diaria
+    return rotina_diaria(clinica)
+
+
 def processar_lembretes():
     resumo = {}
     for clinica in Clinica.objects.filter(ativa=True):
@@ -143,6 +148,7 @@ def processar_lembretes():
                 'medicos': agenda_diaria_medicos(clinica),
                 'usuarios': lembretes_usuarios(clinica),
                 'aniversarios': aniversariantes(clinica),
+                'ouvidoria': _ouvidoria(clinica),
             }
         except Exception:  # noqa: BLE001
             log.exception('Erro ao processar lembretes da clínica %s', clinica.pk)

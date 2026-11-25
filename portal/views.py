@@ -374,6 +374,28 @@ def avisos(request, c, p):
 
 
 @paciente_logado
+def ouvidoria(request, c, p):
+    from ouvidoria import services as ouv
+    from ouvidoria.forms import PublicoForm
+    from ouvidoria.models import Manifestacao
+    config = ouv.garantir_config(c)
+    form = PublicoForm(request.POST or None, clinica=c, config=config, paciente=p)
+    if request.method == 'POST' and form.is_valid():
+        d = dict(form.cleaned_data)
+        d.pop('site', None)
+        if Manifestacao.objects.filter(paciente=p, criado_em__gte=timezone.now() - timedelta(days=1)).count() >= 5:
+            messages.error(request, 'Limite diário de manifestações atingido. Fale com a clínica por telefone.')
+            return redirect('portal:ouvidoria', c.codigo_publico)
+        m, _ = ouv.registrar(c, canal='app', paciente=p, relacao='paciente', **d)
+        messages.success(request, f'Manifestação registrada. Protocolo {m.protocolo}, resposta até '
+                                  f'{m.prazo:%d/%m/%Y}.')
+        return redirect('portal:ouvidoria', c.codigo_publico)
+    return render(request, 'portal/ouvidoria.html', {
+        'c': c, 'p': p, 'aba': 'mais', 'form': form, 'config': config,
+        'manifestacoes': Manifestacao.objects.filter(clinica=c, paciente=p, anonima=False)[:20]})
+
+
+@paciente_logado
 def mais(request, c, p):
     from documentos.models import Documento, DocumentoAssinado
     from financeiro.models import Lancamento

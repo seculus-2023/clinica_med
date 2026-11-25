@@ -35,6 +35,7 @@ RELATORIOS = [
     ('estoque', 'Posição de estoque', 'bi-box-seam', 'estoque'),
     ('movimentos', 'Movimentações de estoque', 'bi-arrow-left-right', 'estoque'),
     ('callcenter', 'Call center / satisfação', 'bi-headset', 'callcenter'),
+    ('ouvidoria', 'Ouvidoria (manifestações)', 'bi-megaphone', 'ouvidoria'),
 ]
 
 
@@ -91,6 +92,8 @@ def _gerar(tipo, c, ini, fim, request):
             total = ['', f'{n} resposta(s)', '', f'NPS = {round((prom - detr) * 100 / n)}', '', '',
                      f'{prom} promotores / {detr} detratores', '']
         return cab, linhas, total
+    if tipo == 'ouvidoria':
+        return _ouvidoria(c, ini_dt, fim_dt)
     if tipo == 'agendamentos':
         cab = ['Data/hora', 'Paciente', 'Profissional', 'Tipo', 'Status', 'Pacote', 'Valor']
         linhas = [[_l(a.inicio), a.paciente.nome, a.medico.nome, a.tipo.nome, a.get_status_display(),
@@ -297,6 +300,35 @@ def _repasse(c, ini, fim, medico):
         linhas.append([m.nome, r['n'], moeda(r['bruto']), moeda(r['taxa']), moeda(liquido),
                        f'{m.percentual_repasse}%', moeda(rep), moeda(liquido - rep)])
     return cab, linhas, ['Total', '', '', '', '', '', moeda(tot), '']
+
+
+def _ouvidoria(c, ini_dt, fim_dt):
+    """Sem nome do manifestante: o relatório circula fora da equipe da ouvidoria."""
+    from ouvidoria.models import Manifestacao
+    ms = list(Manifestacao.objects.filter(clinica=c, criado_em__gte=ini_dt, criado_em__lt=fim_dt)
+              .select_related('setor', 'medico').order_by('criado_em'))
+    cab = ['Protocolo', 'Data', 'Tipo', 'Canal', 'Setor', 'Profissional', 'Assunto', 'Status', 'Prazo',
+           '1ª resposta (dias)', 'No prazo', 'Conclusão', 'Resolvida', 'Satisfação (1-5)']
+    linhas, no_prazo, respondidas = [], 0, 0
+    for m in ms:
+        dias, dentro = '', ''
+        if m.primeira_resposta_em:
+            respondidas += 1
+            dias = round((m.primeira_resposta_em - m.criado_em).total_seconds() / 86400, 1)
+            ok = timezone.localtime(m.primeira_resposta_em).date() <= m.prazo
+            no_prazo += ok
+            dentro = 'Sim' if ok else 'Não'
+        elif m.aberta:
+            dentro = 'Vencida' if m.vencida else 'Em aberto'
+        linhas.append([m.protocolo, _l(m.criado_em), m.get_tipo_display(), m.get_canal_display(), m.setor or '',
+                       m.medico or '', m.assunto, m.get_status_display(), m.prazo.strftime('%d/%m/%Y'), dias, dentro,
+                       m.get_conclusao_display(), {True: 'Sim', False: 'Não'}.get(m.avaliacao_resolvida, ''),
+                       m.avaliacao_nota or ''])
+    por_tipo = ', '.join(f'{n} {t.lower()}' for t, n in sorted(
+        {m.get_tipo_display(): sum(1 for x in ms if x.tipo == m.tipo) for m in ms}.items()))
+    total = ['Total', f'{len(ms)} manifestação(ões)', por_tipo, '', '', '', '', '', '', '',
+             f'{round(no_prazo * 100 / respondidas)}% no prazo' if respondidas else '', '', '', ''] if ms else None
+    return cab, linhas, total
 
 
 @acesso('relatorios')

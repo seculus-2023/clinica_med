@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load clinica_tags %}
+{% block titulo %}Protocolo {{ m.protocolo }}{% endblock %}
+{% block conteudo %}
+<div class="page-head">
+  <div><h1><i class="bi bi-megaphone"></i>{{ m.protocolo }} · {{ m.get_tipo_display }}</h1>
+    <p>{% include "ouvidoria/_status.html" %} · {{ m.get_canal_display }} · registrada em {{ m.criado_em|date:"d/m/Y H:i" }}
+      · prazo {{ m.prazo|date:"d/m/Y" }}{% if m.prorrogada %} (prorrogado){% endif %}
+      {% if m.vencida %}<span class="text-danger fw-semibold">· vencida</span>{% elif m.aberta %}· {{ m.dias_restantes }} dia(s){% endif %}</p></div>
+  <a href="{% url 'ouvidoria:painel' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Ouvidoria</a>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex justify-content-between gap-2"><h2 class="h5 fw-bold mb-1">{{ m.assunto }}</h2>
+        {% if m.prioridade == 1 %}<span class="badge text-bg-danger align-self-start">Prioridade alta</span>{% endif %}</div>
+      <div class="small text-muted mb-3">{% if m.data_ocorrido %}Ocorrido em {{ m.data_ocorrido|date:"d/m/Y" }} · {% endif %}Setor: {{ m.setor|default:"não informado" }}{% if m.medico %} · Profissional: {{ m.medico }}{% endif %}{% if m.agendamento %} · <a href="{% url 'agenda:detalhe' m.agendamento_id %}">atendimento de {{ m.agendamento.inicio|date:"d/m/Y" }}</a>{% endif %}</div>
+      <div style="white-space: pre-line;">{{ m.descricao }}</div>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-header">Manifestante</div><div class="card-body small">
+      {% if m.anonima %}<i class="bi bi-incognito"></i> Manifestação anônima — sem dados de contato.
+      {% elif ver_identidade %}
+        <div class="fw-semibold">{{ m.nome_exibicao }}{% if m.relacao %} <span class="text-muted fw-normal">({{ m.get_relacao_display }})</span>{% endif %}
+          {% if m.sigilosa %}<span class="badge text-bg-warning ms-1">Sigilo</span>{% endif %}</div>
+        {% if m.telefone %}<div><i class="bi bi-telephone"></i> {{ m.telefone }} <a href="https://wa.me/{{ m.telefone|whatsapp_numero }}" target="_blank" rel="noopener" class="ms-1"><i class="bi bi-whatsapp"></i></a></div>{% endif %}
+        {% if m.email %}<div><i class="bi bi-envelope"></i> {{ m.email }}</div>{% endif %}
+        {% if not m.aceita_contato %}<div class="text-muted">Não deseja ser contatado(a).</div>{% endif %}
+        {% if m.paciente %}<div class="mt-1"><a href="{% url 'cadastros:paciente_ficha' m.paciente_id %}">Ficha do paciente</a></div>{% endif %}
+      {% else %}<i class="bi bi-shield-lock"></i> Identidade restrita à equipe da ouvidoria.{% endif %}
+      {% if m.avaliada_em %}<hr><div><b>Avaliação da resposta:</b> {% if m.avaliacao_resolvida %}resolvida{% else %}não resolvida{% endif %} · {{ m.avaliacao_nota }}/5{% if m.avaliacao_comentario %} — {{ m.avaliacao_comentario }}{% endif %}</div>{% endif %}
+    </div></div>
+
+    <div class="card"><div class="card-header">Tramitação</div><div class="card-body">
+      {% for a in andamentos %}
+      <div class="timeline-item">
+        <div class="small text-muted">{{ a.criado_em|date:"d/m/Y H:i" }} · {{ a.usuario|default:"Manifestante" }} · <b>{{ a.get_tipo_display }}</b>{% if a.destino %} → {{ a.destino }}{% endif %}{% if a.setor %} ({{ a.setor }}){% endif %}
+          {% if a.publico %}<span class="badge text-bg-light border ms-1" title="Visível ao manifestante">público</span>{% else %}<span class="badge text-bg-light border ms-1">interno</span>{% endif %}</div>
+        {% if a.texto %}<div class="small" style="white-space: pre-line;">{{ a.texto }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div></div>
+  </div>
+
+  <div class="col-lg-5">
+    {% if editar %}
+      {% if m.encerrada %}
+      <div class="card mb-3"><div class="card-body">
+        <p class="small mb-2">Encerrada em {{ m.encerrada_em|date:"d/m/Y H:i" }}{% if m.conclusao %} · {{ m.get_conclusao_display }}{% endif %}.</p>
+        <form method="post" action="{% url 'ouvidoria:acao' m.pk 'reabrir' %}" class="d-flex gap-2">{% csrf_token %}
+          <input name="mot-texto" class="form-control" placeholder="Motivo da reabertura" required aria-label="Motivo da reabertura">
+          <button class="btn btn-outline-primary text-nowrap"><i class="bi bi-arrow-counterclockwise"></i> Reabrir</button></form>
+      </div></div>
+      {% else %}
+      <div class="card mb-3"><div class="card-header">Responder ao manifestante</div><div class="card-body">
+        {% if m.anonima or not m.aceita_contato or not m.telefone and not m.email %}<div class="alert alert-light border small py-2">Sem contato: a resposta fica disponível na página de acompanhamento (protocolo + chave).</div>{% endif %}
+        <form method="post" action="{% url 'ouvidoria:acao' m.pk 'responder' %}" novalidate>{% csrf_token %}
+          <div class="row g-2">
+            {% include "_campo.html" with f=f_resposta.texto col="col-12" %}
+            {% include "_campo.html" with f=f_resposta.concluir col="col-md-6" %}
+            {% include "_campo.html" with f=f_resposta.conclusao col="col-md-6" %}
+          </div>
+          <button class="btn btn-primary w-100 mt-2"><i class="bi bi-send"></i> Enviar resposta</button></form>
+      </div></div>
+
+      <div class="accordion mb-3" id="acoes">
+        <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acEnc"><i class="bi bi-forward me-2"></i>Encaminhar ao setor</button></h2>
+          <div id="acEnc" class="accordion-collapse collapse" data-bs-parent="#acoes"><div class="accordion-body">
+            <form method="post" action="{% url 'ouvidoria:acao' m.pk 'encaminhar' %}" novalidate>{% csrf_token %}<div class="row g-2">
+              {% include "_campo.html" with f=f_encaminhar.setor col="col-md-6" %}
+              {% include "_campo.html" with f=f_encaminhar.destino col="col-md-6" %}
+              {% include "_campo.html" with f=f_encaminhar.texto col="col-12" %}</div>
+              <p class="small text-muted mt-2 mb-2">Quem recebe vê a manifestação{% if m.sigilosa %} sem a identidade do manifestante{% endif %} e registra um parecer interno.</p>
+              <button class="btn btn-outline-primary w-100">Encaminhar</button></form></div></div></div>
+        <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acNota"><i class="bi bi-journal-text me-2"></i>Nota interna</button></h2>
+          <div id="acNota" class="accordion-collapse collapse" data-bs-parent="#acoes"><div class="accordion-body">
+            <form method="post" action="{% url 'ouvidoria:acao' m.pk 'nota' %}" novalidate>{% csrf_token %}
+              {% include "_campo.html" with f=f_nota.texto col="col-12" %}
+              <button class="btn btn-outline-primary w-100 mt-2">Registrar nota</button></form></div></div></div>
+        <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acCla"><i class="bi bi-tags me-2"></i>Classificação</button></h2>
+          <div id="acCla" class="accordion-collapse collapse" data-bs-parent="#acoes"><div class="accordion-body">
+            <form method="post" action="{% url 'ouvidoria:acao' m.pk 'classificar' %}" novalidate>{% csrf_token %}<div class="row g-2">
+              {% for f in f_editar %}{% include "_campo.html" with col="col-md-6" %}{% endfor %}</div>
+              <button class="btn btn-outline-primary w-100 mt-2">Salvar classificação</button></form></div></div></div>
+        {% if m.aberta and not m.prorrogada %}
+        <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acPro"><i class="bi bi-calendar-plus me-2"></i>Prorrogar prazo</button></h2>
+          <div id="acPro" class="accordion-collapse collapse" data-bs-parent="#acoes"><div class="accordion-body">
+            <form method="post" action="{% url 'ouvidoria:acao' m.pk 'prorrogar' %}" novalidate>{% csrf_token %}<div class="row g-2">
+              {% include "_campo.html" with f=f_prorrogar.dias col="col-md-4" %}
+              {% include "_campo.html" with f=f_prorrogar.texto col="col-md-8" %}</div>
+              <button class="btn btn-outline-primary w-100 mt-2">Prorrogar (uma vez)</button></form></div></div></div>
+        {% endif %}
+        <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#acFim"><i class="bi bi-check2-square me-2"></i>Concluir ou arquivar</button></h2>
+          <div id="acFim" class="accordion-collapse collapse" data-bs-parent="#acoes"><div class="accordion-body">
+            <form method="post" action="{% url 'ouvidoria:acao' m.pk 'concluir' %}" novalidate class="mb-3">{% csrf_token %}<div class="row g-2">
+              {% include "_campo.html" with f=f_concluir.conclusao col="col-12" %}
+              {% include "_campo.html" with f=f_concluir.texto col="col-12" %}</div>
+              <button class="btn btn-success w-100 mt-2">Concluir</button></form>
+            <form method="post" action="{% url 'ouvidoria:acao' m.pk 'arquivar' %}" class="d-flex gap-2" onsubmit="return confirm('Arquivar a manifestação?')">{% csrf_token %}
+              <input name="mot-texto" class="form-control" placeholder="Motivo (duplicada, sem fundamento...)" required aria-label="Motivo do arquivamento">
+              <button class="btn btn-outline-danger text-nowrap">Arquivar</button></form>
+          </div></div></div>
+      </div>
+      {% endif %}
+      {% if historico %}<div class="card"><div class="card-header">Outras manifestações deste paciente</div><ul class="list-group list-group-flush">
+        {% for h in historico %}<li class="list-group-item small"><a href="{% url 'ouvidoria:detalhe' h.pk %}">{{ h.protocolo }}</a> · {{ h.get_tipo_display }} · {{ h.get_status_display }}<div class="text-muted">{{ h.assunto|truncatechars:60 }}</div></li>{% endfor %}</ul></div>{% endif %}
+    {% elif pode_parecer %}
+      <div class="card"><div class="card-header">Seu parecer</div><div class="card-body">
+        <p class="small text-muted">Esta manifestação foi encaminhada a você. Registre o que foi apurado e as providências; a ouvidoria responde ao manifestante.</p>
+        <form method="post" action="{% url 'ouvidoria:acao' m.pk 'parecer' %}" novalidate>{% csrf_token %}
+          {% include "_campo.html" with f=f_parecer.texto col="col-12" %}
+          <button class="btn btn-primary w-100 mt-2"><i class="bi bi-send"></i> Enviar parecer à ouvidoria</button></form>
+      </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

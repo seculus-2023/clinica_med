@@ -16,6 +16,7 @@ MODULOS = [
     ('prontuario', 'Prontuário eletrônico'),
     ('documentos', 'Prescrições e documentos'),
     ('callcenter', 'Call center'),
+    ('ouvidoria', 'Ouvidoria'),
     ('relatorios', 'Relatórios'),
     ('administrativo', 'Administrativo'),
 ]

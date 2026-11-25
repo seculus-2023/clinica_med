@@ -1,0 +1,1 @@
+<span class="badge {% if m.status == 'nova' %}text-bg-primary{% elif m.status == 'em_analise' %}text-bg-info{% elif m.status == 'encaminhada' %}text-bg-warning{% elif m.status == 'respondida' %}text-bg-success{% elif m.status == 'concluida' %}text-bg-secondary{% else %}text-bg-light border{% endif %}">{{ m.get_status_display }}</span>

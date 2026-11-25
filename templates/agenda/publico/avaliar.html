@@ -6,6 +6,11 @@
   <p class="text-muted">{{ ag.tipo }} com {{ ag.medico }} em {{ ag.inicio|date:"d/m/Y" }}</p>
   {% if obrigado %}
     <div class="alert alert-success">Obrigado pela sua avaliação!</div>
+    {% if manifestacao %}
+      <p>Sentimos muito pela sua experiência. Seu comentário foi encaminhado à nossa <b>ouvidoria</b> com o protocolo
+        <b>{{ manifestacao.protocolo }}</b> e será analisado até {{ manifestacao.prazo|date:"d/m/Y" }}.</p>
+      <a href="{{ manifestacao.caminho_publico }}" class="btn btn-outline-primary"><i class="bi bi-search"></i> Acompanhar pela ouvidoria</a>
+    {% endif %}
     {% if av.classificacao == 'promotor' and ag.clinica.google_avaliacao_url %}
       <p>Que bom que você gostou! Pode nos ajudar com uma avaliação no Google?</p>
       <a href="{{ ag.clinica.google_avaliacao_url }}" target="_blank" rel="noopener" class="btn btn-primary"><i class="bi bi-google"></i> Avaliar no Google</a>
